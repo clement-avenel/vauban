@@ -1,0 +1,121 @@
+<% content_for :title, "Documents - Vauban Demo" %>
+
+<div style="margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2>Documents</h2>
+    <% if current_user %>
+      <%= link_to "New Document", new_document_path, style: "padding: 0.5rem 1rem; background: #28a745; color: white; text-decoration: none; border-radius: 4px;" %>
+    <% end %>
+  </div>
+
+  <div style="background: #e7f3ff; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border-left: 4px solid #007bff;">
+    <strong>💡 Demo Tip:</strong> Switch users using the dropdown in the navigation to see how permissions change!
+    Documents you can view are shown below. Try editing or deleting documents to see authorization in action.
+  </div>
+
+  <div style="margin-bottom: 2rem;">
+    <h3>Documents You Can View (<%= @documents.count %>)</h3>
+    <p style="color: #666; font-size: 0.9rem;">
+      These are the documents returned by <code>Vauban.accessible_by(current_user, :view, Document)</code>
+    </p>
+  </div>
+
+  <% if @documents.any? %>
+    <div style="display: grid; gap: 1rem;">
+      <% @documents.each do |document| %>
+        <div style="border: 1px solid #ddd; border-radius: 4px; padding: 1rem; background: white;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+              <h3 style="margin: 0 0 0.5rem 0;">
+                <%= link_to document.title, document, style: "text-decoration: none; color: #007bff;" %>
+              </h3>
+              <p style="margin: 0 0 0.5rem 0; color: #666;">
+                Owner: <strong><%= document.owner.name || document.owner.email %></strong>
+                <% if document.public? %>
+                  <span style="background: #28a745; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">Public</span>
+                <% else %>
+                  <span style="background: #6c757d; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">Private</span>
+                <% end %>
+                <% if document.archived? %>
+                  <span style="background: #ffc107; color: #000; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">Archived</span>
+                <% end %>
+              </p>
+              <% if document.collaborators.any? %>
+                <p style="margin: 0 0 0.5rem 0; color: #666; font-size: 0.9rem;">
+                  Collaborators: <%= document.collaborators.map { |c| c.name || c.email }.join(", ") %>
+                </p>
+              <% end %>
+              <% if document.content.present? %>
+                <p style="margin: 0.5rem 0; color: #333;">
+                  <%= truncate(document.content, length: 150) %>
+                </p>
+              <% end %>
+            </div>
+            <div style="margin-left: 1rem;">
+              <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                <% if can?(:view, document) %>
+                  <%= link_to "View", document, style: "padding: 0.5rem 1rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px; display: block; text-align: center;" %>
+                <% end %>
+                <% if can?(:edit, document) %>
+                  <%= link_to "Edit", edit_document_path(document), style: "padding: 0.5rem 1rem; background: #ffc107; color: #000; text-decoration: none; border-radius: 4px; display: block; text-align: center;" %>
+                <% else %>
+                  <span style="padding: 0.5rem 1rem; background: #e9ecef; color: #6c757d; border-radius: 4px; display: block; text-align: center; cursor: not-allowed;" title="You don't have permission to edit">Edit</span>
+                <% end %>
+                <% if can?(:delete, document) %>
+                  <%= link_to "Delete", document, method: :delete, 
+                      data: { confirm: "Are you sure?" },
+                      style: "padding: 0.5rem 1rem; background: #dc3545; color: white; text-decoration: none; border-radius: 4px; display: block; text-align: center;" %>
+                <% else %>
+                  <span style="padding: 0.5rem 1rem; background: #e9ecef; color: #6c757d; border-radius: 4px; display: block; text-align: center; cursor: not-allowed;" title="You don't have permission to delete">Delete</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p style="color: #666; padding: 2rem; text-align: center; background: #f8f9fa; border-radius: 4px;">
+      No documents available. You may not have permission to view any documents, or there are no documents yet.
+    </p>
+  <% end %>
+
+  <% if @all_documents.any? && @all_documents.count > @documents.count %>
+    <div style="margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #ddd;">
+      <h3>All Documents (<%= @all_documents.count %>) - For Comparison</h3>
+      <p style="color: #666; font-size: 0.9rem;">
+        Below are all documents in the system. Notice how some are grayed out - these are documents you cannot view.
+      </p>
+      <div style="display: grid; gap: 1rem;">
+        <% @all_documents.each do |document| %>
+          <% can_view = can?(:view, document) %>
+          <div style="border: 1px solid #ddd; border-radius: 4px; padding: 1rem; background: <%= can_view ? 'white' : '#f8f9fa' %>; opacity: <%= can_view ? '1' : '0.6' %>;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem 0;">
+                  <%= can_view ? link_to(document.title, document, style: "text-decoration: none; color: #007bff;") : document.title %>
+                  <% unless can_view %>
+                    <span style="color: #dc3545; font-size: 0.875rem;">(No access)</span>
+                  <% end %>
+                </h4>
+                <p style="margin: 0; color: #666; font-size: 0.9rem;">
+                  Owner: <%= document.owner.name || document.owner.email %>
+                  <% if document.public? %>
+                    <span style="background: #28a745; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">Public</span>
+                  <% else %>
+                    <span style="background: #6c757d; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;">Private</span>
+                  <% end %>
+                </p>
+              </div>
+              <div style="margin-left: 1rem; font-size: 0.875rem; color: #666;">
+                <div>View: <%= can?(:view, document) ? '✅' : '❌' %></div>
+                <div>Edit: <%= can?(:edit, document) ? '✅' : '❌' %></div>
+                <div>Delete: <%= can?(:delete, document) ? '✅' : '❌' %></div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

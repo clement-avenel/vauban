@@ -1,0 +1,44 @@
+<% content_for :title, "New Document - Vauban Demo" %>
+
+<div style="margin-bottom: 1rem;">
+  <%= link_to "← Back to Documents", documents_path, style: "color: #007bff; text-decoration: none;" %>
+</div>
+
+<div style="border: 1px solid #ddd; border-radius: 4px; padding: 2rem; background: white; max-width: 600px;">
+  <h1 style="margin: 0 0 1.5rem 0;">New Document</h1>
+
+  <%= form_with model: @document, local: true do |form| %>
+    <% if @document.errors.any? %>
+      <div style="background: #f8d7da; color: #721c24; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem;">
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;"><%= pluralize(@document.errors.count, "error") %> prohibited this document from being saved:</h3>
+        <ul style="margin: 0; padding-left: 1.5rem;">
+          <% @document.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div style="margin-bottom: 1rem;">
+      <%= form.label :title, style: "display: block; margin-bottom: 0.5rem; font-weight: bold;" %>
+      <%= form.text_field :title, style: "width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" %>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <%= form.label :content, style: "display: block; margin-bottom: 0.5rem; font-weight: bold;" %>
+      <%= form.text_area :content, rows: 10, style: "width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; font-family: inherit;" %>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <%= form.label :public, style: "display: flex; align-items: center; gap: 0.5rem; cursor: pointer;" do %>
+        <%= form.check_box :public %>
+        <span>Make this document public (anyone can view it)</span>
+      <% end %>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+      <%= form.submit "Create Document", style: "padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;" %>
+      <%= link_to "Cancel", documents_path, style: "padding: 0.75rem 1.5rem; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block;" %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Policy < Vauban::Policy
+  resource <%= resource_class_name %>
+
+  permission :view do
+    allow_if { |<%= file_name %>, user| <%= file_name %>.owner == user }
+  end
+
+  permission :edit do
+    allow_if { |<%= file_name %>, user| <%= file_name %>.owner == user }
+  end
+
+  permission :delete do
+    allow_if { |<%= file_name %>, user| <%= file_name %>.owner == user }
+  end
+end

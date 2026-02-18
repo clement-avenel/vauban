@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Dummy" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Dummy">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app %>
+  </head>
+
+  <body>
+    <nav style="background: #f5f5f5; padding: 1rem; border-bottom: 1px solid #ddd; margin-bottom: 2rem;">
+      <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1 style="margin: 0; font-size: 1.5rem;">
+            <a href="/" style="text-decoration: none; color: #333;">Vauban Demo</a>
+          </h1>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: #666;">
+            Relationship-Based Access Control for Rails
+          </p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <div>
+            <strong>Current User:</strong>
+            <% if current_user %>
+              <%= current_user.name || current_user.email %>
+            <% else %>
+              <em>No user</em>
+            <% end %>
+          </div>
+          <div>
+            <form action="<%= switch_user_path %>" method="post" style="display: inline;">
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+              <select name="user_id" onchange="this.form.submit()" style="padding: 0.5rem;">
+                <option value="">Switch User...</option>
+                <% User.all.each do |user| %>
+                  <option value="<%= user.id %>" <%= 'selected' if current_user&.id == user.id %>>
+                    <%= user.name || user.email %>
+                  </option>
+                <% end %>
+              </select>
+            </form>
+          </div>
+          <a href="/vauban" style="padding: 0.5rem 1rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">
+            Admin UI
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
+      <% if notice %>
+        <div style="background: #d4edda; color: #155724; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #c3e6cb;">
+          <%= notice %>
+        </div>
+      <% end %>
+
+      <% if alert %>
+        <div style="background: #f8d7da; color: #721c24; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #f5c6cb;">
+          <%= alert %>
+        </div>
+      <% end %>
+
+      <%= yield %>
+    </div>
+  </body>
+</html>
