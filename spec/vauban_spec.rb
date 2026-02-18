@@ -89,7 +89,12 @@ RSpec.describe Vauban do
     end
 
     it "raises PolicyNotFound when no policy exists" do
-      unregistered_resource = double("Resource", class: Class.new)
+      unregistered_resource_class = Class.new
+      unregistered_resource = double("Resource", id: 1, class: unregistered_resource_class)
+      
+      # Ensure Registry returns nil for this resource class
+      allow(Vauban::Registry).to receive(:policy_for).with(unregistered_resource_class).and_return(nil)
+      
       expect {
         Vauban.authorize(user, :view, unregistered_resource)
       }.to raise_error(Vauban::PolicyNotFound)

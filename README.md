@@ -135,8 +135,41 @@ end
 # config/initializers/vauban.rb
 Vauban.configure do |config|
   config.current_user_method = :current_user
-  config.cache_store = Rails.cache
+  config.cache_store = Rails.cache  # Enable caching (default: nil, disabled)
+  config.cache_ttl = 1.hour         # Cache TTL for permission checks (default: 1.hour)
   config.frontend_api_enabled = true
+  config.frontend_cache_ttl = 5.minutes
+end
+```
+
+### Caching
+
+Vauban includes built-in caching for permission checks to improve performance:
+
+- **Permission checks** (`Vauban.can?`) are cached by user, action, resource, and context
+- **Policy lookups** (`Registry.policy_for`) are cached by resource class
+- **Batch operations** automatically benefit from caching
+
+Cache keys include user ID, action, resource class/ID, and context hash, ensuring accurate cache invalidation.
+
+**Cache Management:**
+
+```ruby
+# Clear all cached permissions
+Vauban.clear_cache!
+
+# Clear cache for a specific resource (useful when resource is updated)
+Vauban.clear_cache_for_resource!(document)
+
+# Clear cache for a specific user (useful when user permissions change)
+Vauban.clear_cache_for_user!(user)
+```
+
+**Disable Caching:**
+
+```ruby
+Vauban.configure do |config|
+  config.cache_store = nil  # Disable caching
 end
 ```
 
@@ -210,10 +243,10 @@ See `spec/dummy/README.md` for more details.
 This is an active project with planned improvements:
 
 ### High Priority
-- [ ] **Caching Implementation**: Implement caching for permission checks
-  - Cache `Vauban.can?` results
-  - Cache `Registry.policy_for` lookups
-  - Optimize batch operations
+- [x] **Caching Implementation**: Implement caching for permission checks
+  - ✅ Cache `Vauban.can?` results
+  - ✅ Cache `Registry.policy_for` lookups
+  - ✅ Optimize batch operations
 - [ ] **Better Error Messages**: More descriptive errors with helpful suggestions
 - [ ] **Performance Optimizations**: 
   - Prevent N+1 queries in batch permission checks

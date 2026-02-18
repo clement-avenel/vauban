@@ -7,6 +7,7 @@ require "vauban/registry"
 require "vauban/relationship"
 require "vauban/permission"
 require "vauban/configuration"
+require "vauban/cache"
 
 # Rails integration (auto-loaded if Rails is available)
 if defined?(Rails)
@@ -39,8 +40,8 @@ module Vauban
       policy_class = Registry.policy_for(resource.class)
       raise PolicyNotFound, "No policy found for #{resource.class.name}" unless policy_class
 
-      policy = policy_class.new(user)
-      allowed = policy.allowed?(action, resource, user, context: context)
+      # Use can? which is cached, but raise exception if not allowed
+      allowed = can?(user, action, resource, context: context)
       raise Unauthorized, "Not authorized to #{action} #{resource.class.name}##{resource.id}" unless allowed
 
       true
@@ -48,22 +49,30 @@ module Vauban
 
     # Check permission without raising
     def can?(user, action, resource, context: {})
-      policy_class = Registry.policy_for(resource.class)
-      return false unless policy_class
+      cache_key = Cache.key_for_permission(user, action, resource, context: context)
 
-      policy = policy_class.new(user)
-      policy.allowed?(action, resource, user, context: context)
+      Cache.fetch(cache_key) do
+        policy_class = Registry.policy_for(resource.class)
+        return false unless policy_class
+
+        policy = policy_class.new(user)
+        policy.allowed?(action, resource, user, context: context)
+      end
     rescue StandardError
       false
     end
 
     # Get all permissions for a resource
     def all_permissions(user, resource, context: {})
-      policy_class = Registry.policy_for(resource.class)
-      return {} unless policy_class
+      cache_key = Cache.key_for_all_permissions(user, resource, context: context)
 
-      policy = policy_class.new(user)
-      policy.all_permissions(user, resource, context: context)
+      Cache.fetch(cache_key) do
+        policy_class = Registry.policy_for(resource.class)
+        return {} unless policy_class
+
+        policy = policy_class.new(user)
+        policy.all_permissions(user, resource, context: context)
+      end
     end
 
     # Batch check permissions for multiple resources
@@ -80,6 +89,21 @@ module Vauban
 
       policy = policy_class.new(user)
       policy.scope(user, action, context: context)
+    end
+
+    # Clear all cached permissions
+    def clear_cache!
+      Cache.clear
+    end
+
+    # Clear cache for a specific resource (useful when resource is updated)
+    def clear_cache_for_resource!(resource)
+      Cache.clear_for_resource(resource)
+    end
+
+    # Clear cache for a specific user (useful when user permissions change)
+    def clear_cache_for_user!(user)
+      Cache.clear_for_user(user)
     end
   end
 end

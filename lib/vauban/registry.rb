@@ -30,23 +30,28 @@ module Vauban
         @policies ||= {}
         return nil unless resource_class
 
-        result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
+        # Cache policy lookup (but not lazy discovery results)
+        cache_key = Vauban::Cache.key_for_policy(resource_class)
 
-        # If policy not found, try lazy discovery (for autoloading in development)
-        if result.nil? && resource_class.respond_to?(:name) && resource_class.name
-          # Try to trigger autoloading by constantizing the expected policy class name
-          policy_class_name = "#{resource_class.name}Policy"
-          begin
-            policy_class_name.constantize
-            # Re-run discovery to register the newly loaded policy
-            discover_and_register
-            result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
-          rescue NameError
-            # Policy class doesn't exist, return nil
+        Vauban::Cache.fetch(cache_key) do
+          result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
+
+          # If policy not found, try lazy discovery (for autoloading in development)
+          if result.nil? && resource_class.respond_to?(:name) && resource_class.name
+            # Try to trigger autoloading by constantizing the expected policy class name
+            policy_class_name = "#{resource_class.name}Policy"
+            begin
+              policy_class_name.constantize
+              # Re-run discovery to register the newly loaded policy
+              discover_and_register
+              result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
+            rescue NameError
+              # Policy class doesn't exist, return nil
+            end
           end
-        end
 
-        result
+          result
+        end
       end
 
       def discover_and_register
