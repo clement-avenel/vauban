@@ -11,6 +11,7 @@ group :development, :test do
   gem "rspec", "~> 3.0"
   gem "rspec-rails"
   gem "pry"
+  gem "simplecov", require: false
   # Dummy app dependencies (needed for integration tests)
   gem "sqlite3", ">= 2.1"
 end
