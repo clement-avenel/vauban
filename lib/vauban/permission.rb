@@ -47,7 +47,9 @@ module Vauban
       end
     rescue StandardError => e
       # Log error but don't fail authorization
-      Rails.logger.error("Vauban permission evaluation error: #{e.message}") if defined?(Rails)
+      if defined?(::Rails) && ::Rails.respond_to?(:logger) && ::Rails.logger
+        ::Rails.logger.error("Vauban permission evaluation error: #{e.message}")
+      end
       false
     end
 

@@ -9,7 +9,7 @@ module Vauban
       end
 
       def cannot?(action, resource, context: {})
-        !can?(action, resource)
+        !can?(action, resource, context: context)
       end
     end
   end
