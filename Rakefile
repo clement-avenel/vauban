@@ -15,4 +15,12 @@ RSpec::Core::RakeTask.new(:spec_integration) do |t|
   t.pattern = "spec/integration/**/*_spec.rb"
 end
 
+# RuboCop
+begin
+  require "rubocop/rake_task"
+  RuboCop::RakeTask.new
+rescue LoadError
+  # RuboCop not available
+end
+
 task default: :spec

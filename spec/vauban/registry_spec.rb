@@ -41,8 +41,8 @@ RSpec.describe Vauban::Registry do
     end
 
     it "sets depends_on on policy class" do
-      Vauban::Registry.register(TestResourcePolicy, depends_on: ["other_package"])
-      expect(TestResourcePolicy.depends_on).to eq(["other_package"])
+      Vauban::Registry.register(TestResourcePolicy, depends_on: [ "other_package" ])
+      expect(TestResourcePolicy.depends_on).to eq([ "other_package" ])
     end
 
     it "raises ArgumentError if policy doesn't define resource_class" do
@@ -144,7 +144,7 @@ RSpec.describe Vauban::Registry do
       it "attempts to load policy class if not found" do
         # Clear registry first
         Vauban::Registry.initialize_registry
-        
+
         # Create policy class after clearing registry (simulating autoloading)
         policy_class = Class.new(Vauban::Policy) do
           resource LazyTestResource
@@ -185,7 +185,7 @@ RSpec.describe Vauban::Registry do
       # Policy exists but isn't registered yet
       # Note: ObjectSpace might discover it, so we check if it's already registered
       initial_result = Vauban::Registry.policy_for(DiscoveredResource)
-      
+
       # If already discovered, that's fine - the test still validates discovery works
       if initial_result.nil?
         Vauban::Registry.discover_and_register

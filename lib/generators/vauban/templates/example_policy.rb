@@ -11,8 +11,8 @@ class DocumentPolicy < Vauban::Policy
 
   permission :edit do
     allow_if { |doc, user| doc.owner == user }
-    allow_if { |doc, user| 
-      doc.collaborators.include?(user) && 
+    allow_if { |doc, user|
+      doc.collaborators.include?(user) &&
       doc.collaboration_permissions(user).include?(:edit)
     }
   end

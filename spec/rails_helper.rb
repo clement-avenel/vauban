@@ -6,12 +6,12 @@ SimpleCov.start do
   add_filter "/spec/"
   add_filter "/.bundle/"
   add_filter "/vendor/"
-  
+
   # Track coverage for lib files
   add_group "Core", "lib/vauban"
   add_group "Rails", "lib/vauban/rails"
   add_group "Generators", "lib/generators"
-  
+
   # Filter out lib/vauban.rb lines 13-14 from coverage requirements
   # These lines ARE functionally covered (they execute when Rails is defined),
   # but SimpleCov doesn't track them correctly because Bundler.require loads
@@ -20,7 +20,7 @@ SimpleCov.start do
   filter_lines = lambda do |line|
     file_path = line.filename
     line_number = line.line_number
-    
+
     # Exclude lib/vauban.rb lines 13-14 from coverage requirements
     if file_path.end_with?("lib/vauban.rb") && (line_number == 13 || line_number == 14)
       false  # Don't count these lines toward coverage
@@ -28,10 +28,10 @@ SimpleCov.start do
       true   # Count all other lines
     end
   end
-  
+
   # Apply the filter (SimpleCov doesn't have a direct way to filter specific lines,
   # so we'll document this limitation instead)
-  
+
   # Minimum coverage threshold (optional, can be adjusted)
   # Note: lib/vauban.rb lines 13-14 are functionally covered but may not show
   # as covered in SimpleCov due to how Bundler.require loads the gem.
@@ -54,11 +54,11 @@ if Dir.exist?(dummy_path)
     # This prevents bundler from trying to resolve optional dependencies
     ENV["BUNDLE_GEMFILE"] = dummy_gemfile
   end
-  
+
   begin
     require File.expand_path("dummy/config/environment", __dir__)
     abort("The Rails environment is loading!") unless Rails.env.test?
-    
+
     # Apply Ruby 4.0 compatibility patch after Rails loads
     if RUBY_VERSION >= "4.0" && defined?(ActionView::Template::Handlers::ERB)
       unless ActionView::Template::Handlers::ERB.const_defined?(:ENCODING_FLAG, false)

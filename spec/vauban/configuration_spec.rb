@@ -77,7 +77,7 @@ RSpec.describe Vauban::Configuration do
     end
 
     it "allows setting policy_paths" do
-      custom_paths = ["custom/policies/**/*_policy.rb"]
+      custom_paths = [ "custom/policies/**/*_policy.rb" ]
       config.policy_paths = custom_paths
       expect(config.policy_paths).to eq(custom_paths)
     end

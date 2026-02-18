@@ -5,8 +5,8 @@ require_relative "lib/vauban/version"
 Gem::Specification.new do |spec|
   spec.name          = "vauban"
   spec.version       = Vauban::VERSION
-  spec.authors       = ["Clément Avenel"]
-  spec.email         = ["contact@clement-avenel.com"]
+  spec.authors       = [ "Clément Avenel" ]
+  spec.email         = [ "contact@clement-avenel.com" ]
 
   spec.summary       = "Relationship-based authorization for Rails"
   spec.description   = "A Rails-first authorization gem using Relationship-Based Access Control (ReBAC) with a readable DSL, comprehensive tooling, and frontend API support. Named after Sébastien Le Prestre de Vauban, the master builder of citadels."
@@ -47,7 +47,7 @@ Gem::Specification.new do |spec|
     end
   end
 
-  spec.require_paths = ["lib"]
+  spec.require_paths = [ "lib" ]
 
   # Dependencies
   spec.add_dependency "activesupport", ">= 6.0"
@@ -60,4 +60,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "rspec-rails"
   spec.add_development_dependency "pry"
+  spec.add_development_dependency "rubocop", "~> 1.0"
+  spec.add_development_dependency "rubocop-rails-omakase", "~> 1.0"
+  spec.add_development_dependency "simplecov", "~> 0.22"
 end

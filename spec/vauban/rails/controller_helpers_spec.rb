@@ -70,19 +70,19 @@ RSpec.describe Vauban::Rails::ControllerHelpers, type: :controller do
       # Create a fresh private document owned by user, not other_user
       private_doc = Document.create!(title: "Private Test Doc", owner: user, public: false)
       private_doc.reload
-      
+
       # Verify the document setup
       expect(private_doc.owner).to eq(user)
       expect(private_doc.public).to be false
       expect(private_doc.collaborators).not_to include(other_user)
-      
+
       # Verify authorization will fail for other_user
       expect(Vauban.can?(other_user, :view, private_doc)).to be false
-      
+
       # Stub Document.first to return our private document
       allow(Document).to receive(:first).and_return(private_doc)
       allow(controller).to receive(:current_user).and_return(other_user)
-      
+
       # ApplicationController has rescue_from Vauban::Unauthorized that redirects
       # So we check for the redirect instead of the exception
       get :index

@@ -108,7 +108,7 @@ RSpec.describe Vauban::Policy do
     end
 
     it "returns array of permission names" do
-      expect(TestResourcePolicy.available_permissions).to eq([:view, :edit])
+      expect(TestResourcePolicy.available_permissions).to eq([ :view, :edit ])
     end
 
     it "returns empty array when no permissions defined" do
@@ -350,7 +350,7 @@ RSpec.describe Vauban::Policy do
 
     it "returns all records when no scope defined" do
       policy = TestResourcePolicy.new(user)
-      all_resources = [double("R1"), double("R2")]
+      all_resources = [ double("R1"), double("R2") ]
       allow(resource_class).to receive(:all).and_return(all_resources)
 
       result = policy.scope(user, :nonexistent)
@@ -364,7 +364,7 @@ RSpec.describe Vauban::Policy do
         double("R2", owner: double("Other"), public?: true)
       ]
       allow(resource_class).to receive(:all).and_return(all_resources)
-      
+
       # Scope block should receive context and filter accordingly
       result = policy.scope(user, :view, context: { admin: true })
       expect(result).to be_an(Array)
@@ -486,4 +486,3 @@ RSpec.describe Vauban::Policy do
     end
   end
 end
-

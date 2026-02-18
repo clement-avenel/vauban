@@ -191,7 +191,7 @@ RSpec.describe Vauban do
       allow(res).to receive(:class).and_return(TestResource)
       res
     end
-    let(:resources) { [resource1, resource2] }
+    let(:resources) { [ resource1, resource2 ] }
 
     it "returns hash with resource as key" do
       result = Vauban.batch_permissions(user, resources)
@@ -258,7 +258,7 @@ RSpec.describe Vauban do
     end
 
     it "returns all records when no scope defined" do
-      allow(resource_class).to receive(:all).and_return([double("R1"), double("R2")])
+      allow(resource_class).to receive(:all).and_return([ double("R1"), double("R2") ])
       result = Vauban.accessible_by(user, :nonexistent, resource_class)
       expect(result).to eq(resource_class.all)
     end
@@ -293,4 +293,3 @@ RSpec.describe Vauban do
     end
   end
 end
-

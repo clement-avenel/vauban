@@ -81,6 +81,5 @@ module Vauban
       policy = policy_class.new(user)
       policy.scope(user, action, context: context)
     end
-
   end
 end

@@ -5,12 +5,12 @@ SimpleCov.start do
   add_filter "/spec/"
   add_filter "/.bundle/"
   add_filter "/vendor/"
-  
+
   # Track coverage for lib files
   add_group "Core", "lib/vauban"
   add_group "Rails", "lib/vauban/rails"
   add_group "Generators", "lib/generators"
-  
+
   # Minimum coverage threshold (optional, can be adjusted)
   # Note: Rails conditional loading (lib/vauban.rb lines 13-14) requires
   # running tests with rails_helper to achieve full coverage

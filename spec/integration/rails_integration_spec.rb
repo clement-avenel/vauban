@@ -40,4 +40,3 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     end
   end
 end
-

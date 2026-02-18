@@ -1,0 +1,24 @@
+# Omakase Ruby styling for Rails
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+
+# Exclude the dummy app - it has its own .rubocop.yml
+AllCops:
+  Exclude:
+    - "spec/dummy/**/*"
+    - "vendor/**/*"
+    - "bin/**/*"
+    - "tmp/**/*"
+    - "coverage/**/*"
+  # Disable server mode if you encounter cache permission issues
+  # UseParallelAssignment: false
+  # NewCops: enable
+
+# Override or add rules to create your own house style
+#
+# Example: Allow longer lines for documentation
+# Layout/LineLength:
+#   Max: 120
+#   Exclude:
+#     - "*.md"
+#     - "*.rdoc"

@@ -29,9 +29,9 @@ module Vauban
       def policy_for(resource_class)
         @policies ||= {}
         return nil unless resource_class
-        
+
         result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
-        
+
         # If policy not found, try lazy discovery (for autoloading in development)
         if result.nil? && resource_class.respond_to?(:name) && resource_class.name
           # Try to trigger autoloading by constantizing the expected policy class name
@@ -45,7 +45,7 @@ module Vauban
             # Policy class doesn't exist, return nil
           end
         end
-        
+
         result
       end
 
@@ -96,7 +96,7 @@ module Vauban
 
         parent_class = resource_class.superclass
         return nil if parent_class.nil? || parent_class == Object
-        
+
         # Check for ActiveRecord::Base if ActiveRecord is loaded
         if defined?(ActiveRecord::Base) && parent_class == ActiveRecord::Base
           return nil
