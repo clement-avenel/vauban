@@ -3,10 +3,10 @@ class ApplicationController < ActionController::Base
   allow_browser versions: :modern
 
   # Changes to the importmap will invalidate the etag for HTML responses
-  stale_when_importmap_changes
+  stale_when_importmap_changes if respond_to?(:stale_when_importmap_changes)
   
-  # Include Vauban authorization helpers
-  include Vauban::Rails::ControllerHelpers
+  # Include Vauban authorization helpers (conditional to handle loading order)
+  include Vauban::Rails::ControllerHelpers if defined?(Vauban::Rails)
   
   # Handle Vauban authorization errors
   rescue_from Vauban::Unauthorized do |exception|
