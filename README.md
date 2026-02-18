@@ -210,11 +210,6 @@ See `spec/dummy/README.md` for more details.
 This is an active project with planned improvements:
 
 ### High Priority
-- [ ] **Test Coverage**: Expand test suite (currently 3 spec files for 20 lib files)
-  - Add tests for `Registry` (discovery, inheritance, lazy loading)
-  - Add tests for `Permission` (rule evaluation, error handling)
-  - Add tests for Rails helpers (controller/view)
-  - Add edge case and error scenario tests
 - [ ] **Caching Implementation**: Implement caching for permission checks
   - Cache `Vauban.can?` results
   - Cache `Registry.policy_for` lookups
@@ -240,8 +235,6 @@ This is an active project with planned improvements:
 - [ ] **CI/CD Setup**: 
   - GitHub Actions workflow
   - Test against multiple Rails versions
-  - Code coverage reporting (SimpleCov)
-  - Linting (RuboCop)
 
 ### Nice to Have
 - [ ] **Advanced Features**: 
@@ -252,7 +245,6 @@ This is an active project with planned improvements:
   - Metrics (permission check counts, cache hit rates)
   - Performance profiling hooks
 - [ ] **Code Quality**: 
-  - RuboCop configuration
   - Security audit (bundler-audit)
 
 ## Contributing
