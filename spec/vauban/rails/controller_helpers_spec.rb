@@ -3,6 +3,26 @@
 require "rails_helper"
 
 RSpec.describe Vauban::Rails::ControllerHelpers, type: :controller do
+  before(:each) do
+    # Reset config first to prevent test pollution from other test files
+    Vauban.configure do |config|
+      config.current_user_method = :current_user
+    end
+    # Then set up models and policies
+    DummyAppSetup.setup_all
+    # Explicitly register DocumentPolicy if it exists (for test isolation)
+    if defined?(DocumentPolicy) && DocumentPolicy < Vauban::Policy
+      Vauban::Registry.register(DocumentPolicy) unless Vauban::Registry.policy_for(Document)
+    end
+  end
+
+  after(:each) do
+    # Reset config after each test to prevent test pollution
+    Vauban.configure do |config|
+      config.current_user_method = :current_user
+    end
+  end
+
   controller(ApplicationController) do
     include Vauban::Rails::ControllerHelpers
 
