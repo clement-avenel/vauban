@@ -37,9 +37,9 @@ jobs:
             ${{ runner.os }}-gems-
 
       - name: Install gem dependencies
-        env:
-          BUNDLE_PATH: vendor/bundle
-        run: bundle install
+        run: |
+          bundle config set --local path 'vendor/bundle'
+          bundle install
 
       - name: Set up dummy app Rails version
         working-directory: spec/dummy
@@ -49,9 +49,9 @@ jobs:
 
       - name: Install dummy app dependencies
         working-directory: spec/dummy
-        env:
-          BUNDLE_PATH: ../../vendor/bundle
-        run: bundle install
+        run: |
+          bundle config set --local path '../../vendor/bundle'
+          bundle install
 
       - name: Set up dummy app database
         working-directory: spec/dummy
@@ -108,9 +108,9 @@ jobs:
             ${{ runner.os }}-gems-
 
       - name: Install gem dependencies
-        env:
-          BUNDLE_PATH: vendor/bundle
-        run: bundle install
+        run: |
+          bundle config set --local path 'vendor/bundle'
+          bundle install
 
       - name: Run RuboCop
         run: bundle exec rubocop
@@ -140,9 +140,9 @@ jobs:
             ${{ runner.os }}-gems-
 
       - name: Install gem dependencies
-        env:
-          BUNDLE_PATH: vendor/bundle
-        run: bundle install
+        run: |
+          bundle config set --local path 'vendor/bundle'
+          bundle install
 
       - name: Check for known security vulnerabilities
         run: |
