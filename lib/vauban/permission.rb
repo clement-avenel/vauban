@@ -7,29 +7,31 @@ module Vauban
     def initialize(name, &block)
       @name = name
       @rules = []
+      @allow_rules = []
+      @deny_rules = []
       instance_eval(&block) if block_given?
     end
 
     def allow_if(&block)
-      @rules << Rule.new(:allow, block)
+      rule = Rule.new(:allow, block)
+      @rules << rule
+      @allow_rules << rule
     end
 
     def deny_if(&block)
-      @rules << Rule.new(:deny, block)
+      rule = Rule.new(:deny, block)
+      @rules << rule
+      @deny_rules << rule
     end
 
     def allowed?(resource, user, context: {}, policy: nil)
-      # Check deny rules first
-      @rules.each do |rule|
-        next unless rule.type == :deny
-
+      # Check deny rules first (no type checking needed - already separated)
+      @deny_rules.each do |rule|
         return false if evaluate_rule(rule, resource, user, context, policy)
       end
 
-      # Check allow rules
-      @rules.each do |rule|
-        next unless rule.type == :allow
-
+      # Check allow rules (no type checking needed - already separated)
+      @allow_rules.each do |rule|
         return true if evaluate_rule(rule, resource, user, context, policy)
       end
 

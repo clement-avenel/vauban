@@ -252,10 +252,10 @@ This is an active project with planned improvements:
   - ✅ Enhanced `Unauthorized` with user info, available permissions, and debugging suggestions
   - ✅ Improved permission evaluation error logging with detailed context (permission, rule type, resource, user, backtrace)
   - ✅ Enhanced `ArgumentError` messages in Registry and Policy with actionable fixes
-- [ ] **Performance Optimizations**: 
-  - Prevent N+1 queries in batch permission checks
-  - Improve lazy loading
-  - Add memoization for policy instances
+- [x] **Performance Optimizations**: 
+  - ✅ Prevent N+1 queries in batch permission checks (automatic association preloading)
+  - ✅ Improve lazy loading (track discovered policies to avoid redundant scans)
+  - ✅ Add memoization for policy instances (per-user policy instance caching)
 
 ### Medium Priority
 - [ ] **Developer Experience**: 

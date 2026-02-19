@@ -50,17 +50,38 @@ module Vauban
       @user = user
     end
 
+    # Memoize policy instances per user to avoid recreating them
+    def self.instance_for(user)
+      @instances ||= {}
+      @instances_mutex ||= Mutex.new
+
+      user_key = user_key_for(user)
+      
+      @instances_mutex.synchronize do
+        @instances[user_key] ||= {}
+        @instances[user_key][self] ||= new(user)
+      end
+    end
+
+    def self.clear_instance_cache!
+      @instances_mutex ||= Mutex.new
+      @instances_mutex.synchronize do
+        @instances = {}
+      end
+    end
+
+    # Public method to get all permissions for a resource
+    def all_permissions(user, resource, context: {})
+      self.class.permissions.each_with_object({}) do |(action, _permission), result|
+        result[action.to_s] = allowed?(action, resource, user, context: context)
+      end
+    end
+
     def allowed?(action, resource, user, context: {})
       permission = self.class.permissions[action.to_sym]
       return false unless permission
 
       permission.allowed?(resource, user, context: context, policy: self)
-    end
-
-    def all_permissions(user, resource, context: {})
-      self.class.permissions.each_with_object({}) do |(action, _permission), result|
-        result[action.to_s] = allowed?(action, resource, user, context: context)
-      end
     end
 
     def scope(user, action, context: {})
@@ -104,6 +125,20 @@ module Vauban
       return nil unless condition_block
 
       condition_block.call(resource, user, context)
+    end
+
+    private
+
+    def self.user_key_for(user)
+      return "user:nil" if user.nil?
+      
+      if user.respond_to?(:id)
+        "user:#{user.id}"
+      elsif user.respond_to?(:to_key)
+        "user:#{user.to_key.join('-')}"
+      else
+        "user:#{user.object_id}"
+      end
     end
   end
 end

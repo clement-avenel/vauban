@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "set"
+
 module Vauban
   class Registry
     class << self
@@ -71,6 +73,9 @@ module Vauban
       def discover_and_register
         initialize_registry unless @policies
 
+        # Track discovered policy classes to avoid redundant ObjectSpace scans
+        @discovered_policy_classes ||= Set.new
+
         # Build absolute paths for policy files
         base_path = if defined?(Rails) && Rails.respond_to?(:root)
           Rails.root.to_s
@@ -100,9 +105,14 @@ module Vauban
         end
 
         # Auto-register all policies that inherit from Vauban::Policy
+        # Only scan for new policies that haven't been discovered yet
         ObjectSpace.each_object(Class) do |klass|
           if klass < Policy && klass != Policy && klass.resource_class
+            # Skip if we've already discovered and registered this policy
+            next if @discovered_policy_classes.include?(klass)
+            
             register(klass) unless @policies[klass.resource_class]
+            @discovered_policy_classes.add(klass)
           end
         end
       end
