@@ -4,7 +4,10 @@ Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Code is not reloaded between requests.
-  config.enable_reloading = false
+  # enable_reloading is only available in Rails 8.1+
+  if Rails::VERSION::MAJOR > 8 || (Rails::VERSION::MAJOR == 8 && Rails::VERSION::MINOR >= 1)
+    config.enable_reloading = false
+  end
 
   # Eager load code on boot for better performance and memory savings (ignored by Rake tasks).
   config.eager_load = true
@@ -38,7 +41,10 @@ Rails.application.configure do
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
   # Prevent health checks from clogging up the logs.
-  config.silence_healthcheck_path = "/up"
+  # silence_healthcheck_path is only available in Rails 8.1+
+  if Rails::VERSION::MAJOR > 8 || (Rails::VERSION::MAJOR == 8 && Rails::VERSION::MINOR >= 1)
+    config.silence_healthcheck_path = "/up"
+  end
 
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
