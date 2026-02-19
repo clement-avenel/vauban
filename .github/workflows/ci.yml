@@ -31,8 +31,14 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      - name: Install Bundler 4.0.3
-        run: gem install bundler:4.0.3
+      - name: Install Bundler
+        run: |
+          if [[ "${{ matrix.ruby }}" == "3.0" ]] || [[ "${{ matrix.ruby }}" == "3.1" ]]; then
+            gem install bundler:2.5.10
+            bundle update --bundler
+          else
+            gem install bundler:4.0.3
+          fi
 
       - name: Cache gems
         uses: actions/cache@v4
