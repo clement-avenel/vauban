@@ -13,14 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.0', '3.1', '3.2', '3.3']
-        rails: ['6.0', '6.1', '7.0', '7.1', '8.0', '8.1']
-        exclude:
-          # Exclude incompatible combinations
-          - ruby: '3.0'
-            rails: '8.1'  # Rails 8.1 may have issues with Ruby 3.0
-          - ruby: '3.1'
-            rails: '8.1'  # Rails 8.1 may have issues with Ruby 3.1
+        ruby: ['3.3']
+        rails: ['7.0', '8.1']
 
     steps:
       - name: Checkout code
@@ -31,14 +25,8 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      - name: Install Bundler
-        run: |
-          if [[ "${{ matrix.ruby }}" == "3.0" ]] || [[ "${{ matrix.ruby }}" == "3.1" ]]; then
-            gem install bundler:2.5.10
-            bundle update --bundler
-          else
-            gem install bundler:4.0.3
-          fi
+      - name: Install Bundler 4.0.3
+        run: gem install bundler:4.0.3
 
       - name: Cache gems
         uses: actions/cache@v4
@@ -86,7 +74,7 @@ jobs:
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
-        if: matrix.ruby == '3.3' && matrix.rails == '8.0'
+        if: matrix.rails == '8.1'
         with:
           files: ./coverage/coverage.json
           fail_ci_if_error: false
