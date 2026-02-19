@@ -6,6 +6,8 @@ gem "vauban", path: "../../"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
+# Rails 7.0 requires sqlite3 ~> 1.4, Rails 8.1+ supports sqlite3 >= 2.1
+# This will be dynamically updated by CI based on Rails version
 gem "sqlite3", ">= 2.1"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"

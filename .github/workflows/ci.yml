@@ -46,10 +46,18 @@ jobs:
         run: |
           # Update Rails version in dummy app Gemfile for testing
           ruby -i.bak -pe 'gsub(/gem\s+"rails"(?:,\s*[^"]+)?/, "gem \"rails\", \"~> ${{ matrix.rails }}.0\"")' Gemfile
+          # Update sqlite3 version based on Rails version
+          # Rails 7.0 requires sqlite3 ~> 1.4, Rails 8.1+ supports sqlite3 >= 2.1
+          if [ "${{ matrix.rails }}" = "7.0" ]; then
+            ruby -i.bak2 -pe 'gsub(/gem\s+"sqlite3"[^\\n]*/, "gem \"sqlite3\", \"~> 1.4\"")' Gemfile
+          else
+            ruby -i.bak2 -pe 'gsub(/gem\s+"sqlite3"[^\\n]*/, "gem \"sqlite3\", \">= 2.1\"")' Gemfile
+          fi
 
       - name: Install dummy app dependencies
         working-directory: spec/dummy
         run: |
+          export BUNDLE_GEMFILE=$(pwd)/Gemfile
           bundle config set --local path '../../vendor/bundle'
           bundle install
 
@@ -59,6 +67,7 @@ jobs:
           RAILS_ENV: test
         run: |
           mkdir -p storage
+          export BUNDLE_GEMFILE=$(pwd)/Gemfile
           bundle exec rails db:create db:migrate
 
       - name: Run unit tests
