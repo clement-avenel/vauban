@@ -51,22 +51,40 @@ module Vauban
     end
 
     # Memoize policy instances per user to avoid recreating them
+    # Uses Concurrent::Map if available for better performance, otherwise falls back to Mutex
     def self.instance_for(user)
-      @instances ||= {}
-      @instances_mutex ||= Mutex.new
+      @instances ||= begin
+        if defined?(Concurrent) && defined?(Concurrent::Map)
+          Concurrent::Map.new
+        else
+          {}
+        end
+      end
+      @instances_mutex ||= Mutex.new unless @instances.is_a?(Concurrent::Map)
 
       user_key = user_key_for(user)
       
-      @instances_mutex.synchronize do
-        @instances[user_key] ||= {}
-        @instances[user_key][self] ||= new(user)
+      if @instances.is_a?(Concurrent::Map)
+        # Use Concurrent::Map - thread-safe without explicit locking
+        user_instances = @instances[user_key] ||= Concurrent::Map.new
+        user_instances[self] ||= new(user)
+      else
+        # Fall back to Mutex-protected Hash
+        @instances_mutex.synchronize do
+          @instances[user_key] ||= {}
+          @instances[user_key][self] ||= new(user)
+        end
       end
     end
 
     def self.clear_instance_cache!
-      @instances_mutex ||= Mutex.new
-      @instances_mutex.synchronize do
-        @instances = {}
+      if @instances.is_a?(Concurrent::Map)
+        @instances.clear
+      else
+        @instances_mutex ||= Mutex.new
+        @instances_mutex.synchronize do
+          @instances = {}
+        end
       end
     end
 

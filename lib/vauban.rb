@@ -226,6 +226,12 @@ module Vauban
       # Group resources by class to optimize policy lookups
       resources_by_class = resources.group_by(&:class)
       
+      # Memoize policy class lookups - lookup once per resource class
+      policy_classes = {}
+      resources_by_class.each_key do |resource_class|
+        policy_classes[resource_class] = Registry.policy_for(resource_class)
+      end
+      
       # Preload associations for ActiveRecord resources to prevent N+1 queries
       preload_associations(resources) if active_record_available?
 
@@ -259,11 +265,12 @@ module Vauban
       end
 
       # Process uncached resources - compute permissions and cache them
+      # Use pre-looked-up policy classes for better performance
       uncached_results = {}
       uncached_resources_with_keys.each do |resource, cache_key|
         # Use Cache.fetch which handles caching properly
         permissions = Cache.fetch(cache_key) do
-          policy_class = Registry.policy_for(resource.class)
+          policy_class = policy_classes[resource.class]
           if policy_class
             policy = policy_class.instance_for(user)
             policy.all_permissions(user, resource, context: context)
