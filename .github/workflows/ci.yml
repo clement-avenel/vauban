@@ -30,6 +30,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          bundler: '4.0.3'
           bundler-cache: true
 
       - name: Install gem dependencies
@@ -87,6 +88,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
+          bundler: '4.0.3'
           bundler-cache: true
 
       - name: Run RuboCop
@@ -104,6 +106,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
+          bundler: '4.0.3'
           bundler-cache: true
 
       - name: Check for known security vulnerabilities
