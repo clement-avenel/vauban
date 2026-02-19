@@ -20,13 +20,18 @@ Bundler.require(*Rails.groups)
 
 module Dummy
   class Application < Rails::Application
-    # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 8.1
+    # Initialize configuration defaults for the installed Rails version.
+    # Dynamically determine the version to support multiple Rails versions in CI
+    rails_version = "#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}"
+    config.load_defaults rails_version
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    # autoload_lib is only available in Rails 8.1+
+    if Rails::VERSION::MAJOR > 8 || (Rails::VERSION::MAJOR == 8 && Rails::VERSION::MINOR >= 1)
+      config.autoload_lib(ignore: %w[assets tasks])
+    end
 
     # Configuration for the application, engines, and railties goes here.
     #
