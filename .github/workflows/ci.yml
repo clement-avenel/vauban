@@ -58,6 +58,7 @@ jobs:
         env:
           RAILS_ENV: test
         run: |
+          mkdir -p storage
           bundle exec rails db:create db:migrate
 
       - name: Run unit tests

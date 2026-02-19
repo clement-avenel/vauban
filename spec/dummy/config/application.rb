@@ -18,6 +18,9 @@ require "action_view/railtie"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# Load migration version helper for dynamic migrations
+require_relative "../lib/migration_version" if File.exist?(File.expand_path("../lib/migration_version.rb", __FILE__))
+
 module Dummy
   class Application < Rails::Application
     # Initialize configuration defaults for the installed Rails version.
