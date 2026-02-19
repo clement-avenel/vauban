@@ -148,15 +148,7 @@ module Vauban
     private
 
     def self.user_key_for(user)
-      return "user:nil" if user.nil?
-      
-      if user.respond_to?(:id)
-        "user:#{user.id}"
-      elsif user.respond_to?(:to_key)
-        "user:#{user.to_key.join('-')}"
-      else
-        "user:#{user.object_id}"
-      end
+      ResourceIdentifier.user_key_for(user)
     end
   end
 end

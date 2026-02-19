@@ -2,6 +2,7 @@
 
 require "vauban/version"
 require "vauban/core"
+require "vauban/resource_identifier"
 require "vauban/policy"
 require "vauban/registry"
 require "vauban/relationship"
@@ -28,8 +29,8 @@ module Vauban
       @available_permissions = available_permissions
       @context = context
 
-      user_info = user_info_string(user)
-      resource_info = resource_info_string(resource)
+      user_info = ResourceIdentifier.user_info_string(user)
+      resource_info = ResourceIdentifier.resource_info_string(resource)
       permissions_info = permissions_info_string(available_permissions)
 
       message = build_message(user_info, resource_info, permissions_info)
@@ -47,18 +48,6 @@ module Vauban
       msg += "\n  - Verify the user has the required relationships"
       msg += "\n  - Review context: #{@context.inspect}" unless @context.empty?
       msg
-    end
-
-    def user_info_string(user)
-      return "nil" if user.nil?
-      return "#{user.class.name}##{user.respond_to?(:id) ? user.id : 'unknown'}" if user.respond_to?(:id)
-      user.class.name
-    end
-
-    def resource_info_string(resource)
-      return "nil" if resource.nil?
-      return "#{resource.class.name}##{resource.id}" if resource.respond_to?(:id)
-      resource.class.name
     end
 
     def permissions_info_string(permissions)

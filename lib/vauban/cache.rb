@@ -140,27 +140,11 @@ module Vauban
       end
 
       def user_id_for(user)
-        return "user:nil" if user.nil?
-
-        if user.respond_to?(:id)
-          "user:#{user.id}"
-        elsif user.respond_to?(:to_key)
-          "user:#{user.to_key.join('-')}"
-        else
-          "user:#{user.object_id}"
-        end
+        ResourceIdentifier.user_id_for(user)
       end
 
       def resource_key_for(resource)
-        return "nil" if resource.nil?
-
-        if resource.respond_to?(:id)
-          "#{resource.class.name}:#{resource.id}"
-        elsif resource.is_a?(Class)
-          "class:#{resource.name}"
-        else
-          "#{resource.class.name}:#{resource.object_id}"
-        end
+        ResourceIdentifier.resource_key_for(resource)
       end
 
       def context_key_for(context)

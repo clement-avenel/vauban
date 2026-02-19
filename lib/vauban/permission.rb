@@ -56,8 +56,8 @@ module Vauban
     end
 
     def log_permission_error(error, rule, resource, user, context, policy)
-      resource_info = resource_info_string(resource)
-      user_info = user_info_string(user)
+      resource_info = ResourceIdentifier.resource_info_string(resource)
+      user_info = ResourceIdentifier.user_info_string(user)
       policy_info = policy ? policy.class.name : "none"
       rule_location = rule_location_string(rule)
 
@@ -73,18 +73,6 @@ module Vauban
       message += "\n  Backtrace:\n    #{error.backtrace&.first(5)&.join("\n    ")}"
 
       ::Rails.logger.error(message)
-    end
-
-    def resource_info_string(resource)
-      return "nil" if resource.nil?
-      return "#{resource.class.name}##{resource.id}" if resource.respond_to?(:id)
-      resource.class.name
-    end
-
-    def user_info_string(user)
-      return "nil" if user.nil?
-      return "#{user.class.name}##{user.id}" if user.respond_to?(:id)
-      user.class.name
     end
 
     def rule_location_string(rule)
