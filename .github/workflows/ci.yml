@@ -33,6 +33,11 @@ jobs:
           bundler: '4.0.3'
           bundler-cache: true
 
+      - name: Ensure correct Bundler version
+        run: |
+          gem install bundler:4.0.3
+          bundle --version
+
       - name: Install gem dependencies
         run: bundle install
 
@@ -91,6 +96,11 @@ jobs:
           bundler: '4.0.3'
           bundler-cache: true
 
+      - name: Ensure correct Bundler version
+        run: |
+          gem install bundler:4.0.3
+          bundle --version
+
       - name: Run RuboCop
         run: bundle exec rubocop
 
@@ -108,6 +118,11 @@ jobs:
           ruby-version: '3.3'
           bundler: '4.0.3'
           bundler-cache: true
+
+      - name: Ensure correct Bundler version
+        run: |
+          gem install bundler:4.0.3
+          bundle --version
 
       - name: Check for known security vulnerabilities
         run: |
