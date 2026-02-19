@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "vauban/railtie"
+require "vauban/rails/authorization_helpers"
 require "vauban/rails/controller_helpers"
 require "vauban/rails/view_helpers"
 require "vauban/generators" if defined?(Rails)

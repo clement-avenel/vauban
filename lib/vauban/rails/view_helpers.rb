@@ -1,16 +1,11 @@
 # frozen_string_literal: true
 
+require "vauban/rails/authorization_helpers"
+
 module Vauban
   module Rails
     module ViewHelpers
-      def can?(action, resource, context: {})
-        current_user = send(Vauban.config.current_user_method)
-        Vauban.can?(current_user, action, resource, context: context)
-      end
-
-      def cannot?(action, resource, context: {})
-        !can?(action, resource, context: context)
-      end
+      include AuthorizationHelpers
     end
   end
 end
