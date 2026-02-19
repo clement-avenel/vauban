@@ -9,6 +9,7 @@ require "vauban/relationship"
 require "vauban/permission"
 require "vauban/configuration"
 require "vauban/cache"
+require "vauban/batch_permission_checker"
 
 # Rails integration (auto-loaded if Rails is available)
 if defined?(Rails)
@@ -210,69 +211,7 @@ module Vauban
     # Batch check permissions for multiple resources
     # Optimized to prevent N+1 queries by preloading associations and batch cache reads
     def batch_permissions(user, resources, context: {})
-      return {} if resources.empty?
-
-      # Group resources by class to optimize policy lookups
-      resources_by_class = resources.group_by(&:class)
-      
-      # Memoize policy class lookups - lookup once per resource class
-      policy_classes = {}
-      resources_by_class.each_key do |resource_class|
-        policy_classes[resource_class] = Registry.policy_for(resource_class)
-      end
-      
-      # Preload associations for ActiveRecord resources to prevent N+1 queries
-      preload_associations(resources) if active_record_available?
-
-      # Generate all cache keys upfront
-      resource_cache_keys = resources.map do |resource|
-        [resource, Cache.key_for_all_permissions(user, resource, context: context)]
-      end.to_h
-
-      # Batch read from cache if supported
-      cached_results = {}
-      uncached_resources_with_keys = []
-
-      cache_store_instance = cache_store
-      if cache_store_instance && cache_store_supports_read_multi?
-        # Try batch read from cache
-        cache_keys_array = resource_cache_keys.values
-        cached_values = cache_store_instance.read_multi(*cache_keys_array)
-
-        resource_cache_keys.each do |resource, key|
-          if cached_values.key?(key)
-            cached_results[resource] = cached_values[key]
-          else
-            uncached_resources_with_keys << [resource, key]
-          end
-        end
-      else
-        # Fall back to individual cache checks (or no cache)
-        resource_cache_keys.each do |resource, key|
-          uncached_resources_with_keys << [resource, key]
-        end
-      end
-
-      # Process uncached resources - compute permissions and cache them
-      # Use pre-looked-up policy classes for better performance
-      uncached_results = {}
-      uncached_resources_with_keys.each do |resource, cache_key|
-        # Use Cache.fetch which handles caching properly
-        permissions = Cache.fetch(cache_key) do
-          policy_class = policy_classes[resource.class]
-          if policy_class
-            policy = policy_class.instance_for(user)
-            policy.all_permissions(user, resource, context: context)
-          else
-            {}
-          end
-        end
-        
-        uncached_results[resource] = permissions
-      end
-
-      # Merge cached and uncached results
-      cached_results.merge(uncached_results)
+      BatchPermissionChecker.new(user, resources, context: context).call
     end
 
     # Get accessible records (scoping)
@@ -308,81 +247,5 @@ module Vauban
     end
 
     private
-
-    # Check if ActiveRecord is available
-    def active_record_available?
-      defined?(ActiveRecord) && defined?(ActiveRecord::Base)
-    end
-
-    # Check if cache store supports batch reads (read_multi)
-    def cache_store_supports_read_multi?
-      cache_store = Vauban.config.cache_store
-      return false unless cache_store
-
-      cache_store.respond_to?(:read_multi)
-    end
-
-    # Get cache store instance
-    def cache_store
-      Vauban.config.cache_store
-    end
-
-    # Preload common associations that might be used in permission checks
-    # This prevents N+1 queries when checking permissions on multiple resources
-    def preload_associations(resources)
-      return unless active_record_available?
-      return if resources.empty?
-
-      # Group by class since different models have different associations
-      resources_by_class = resources.group_by(&:class)
-
-      resources_by_class.each do |resource_class, class_resources|
-        # Only preload for ActiveRecord models
-        next unless resource_class < ActiveRecord::Base
-
-        # Filter to only ActiveRecord instances (not classes)
-        ar_instances = class_resources.select { |r| r.is_a?(ActiveRecord::Base) }
-        next if ar_instances.empty?
-
-        # Common association names that are often used in permission checks
-        # Users can override this behavior by preloading associations themselves
-        common_associations = detect_common_associations(resource_class)
-
-        if common_associations.any?
-          # Use ActiveRecord's preloader API (Rails 6+)
-          ActiveRecord::Associations::Preloader.new(
-            records: ar_instances,
-            associations: common_associations
-          ).call
-        end
-      end
-    rescue StandardError => e
-      # If preloading fails, log but don't fail the authorization check
-      # This is a performance optimization, not a critical feature
-      if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-        Rails.logger.warn("Vauban: Failed to preload associations: #{e.message}")
-      end
-    end
-
-    # Detect common association names that might be used in permission checks
-    # This is a heuristic - users can always preload manually if needed
-    def detect_common_associations(resource_class)
-      associations = []
-      
-      # Check for common relationship patterns
-      %w[owner user collaborator collaborators team members organization].each do |name|
-        if resource_class.reflect_on_association(name.to_sym) ||
-           resource_class.reflect_on_association(name.pluralize.to_sym)
-          associations << name.to_sym
-        end
-      end
-
-      # Also check for belongs_to associations (commonly used in permission checks)
-      resource_class.reflect_on_all_associations(:belongs_to).each do |reflection|
-        associations << reflection.name unless associations.include?(reflection.name)
-      end
-
-      associations
-    end
   end
 end
