@@ -1,0 +1,58 @@
+#!/bin/bash
+# Pre-commit hook for Vauban
+# Runs RuboCop and RSpec tests before allowing commits
+#
+# To install: cp bin/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}Running pre-commit checks...${NC}"
+
+# Check if we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  echo -e "${RED}Error: Not in a git repository${NC}"
+  exit 1
+fi
+
+# Check if bundle is available
+if ! command -v bundle &> /dev/null; then
+  echo -e "${YELLOW}Warning: bundle command not found. Skipping checks.${NC}"
+  exit 0
+fi
+
+# Run RuboCop
+echo -e "${GREEN}Running RuboCop...${NC}"
+if bundle exec rubocop; then
+  echo -e "${GREEN}✓ RuboCop passed${NC}"
+else
+  echo -e "${RED}✗ RuboCop failed. Please fix the issues above.${NC}"
+  exit 1
+fi
+
+# Run unit tests (faster than integration tests)
+echo -e "${GREEN}Running unit tests...${NC}"
+if bundle exec rspec spec/vauban/; then
+  echo -e "${GREEN}✓ Unit tests passed${NC}"
+else
+  echo -e "${RED}✗ Unit tests failed. Please fix the issues above.${NC}"
+  exit 1
+fi
+
+# Optionally run integration tests (can be slow, so make it optional)
+# Uncomment the following lines if you want integration tests to run on every commit
+# echo -e "${GREEN}Running integration tests...${NC}"
+# if bundle exec rspec spec/integration/; then
+#   echo -e "${GREEN}✓ Integration tests passed${NC}"
+# else
+#   echo -e "${RED}✗ Integration tests failed. Please fix the issues above.${NC}"
+#   exit 1
+# fi
+
+echo -e "${GREEN}✓ All pre-commit checks passed!${NC}"
+exit 0

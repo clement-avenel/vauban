@@ -312,6 +312,32 @@ This is an active project with planned improvements:
 - [ ] **Code Quality**: 
   - Security audit (bundler-audit)
 
+## Development
+
+### Pre-commit Hooks
+
+To ensure code quality, you can install pre-commit hooks that run RuboCop and unit tests before each commit:
+
+```bash
+# Install the pre-commit hook (make sure the script is executable first)
+chmod +x bin/install-pre-commit
+./bin/install-pre-commit
+
+# Or manually:
+cp bin/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook will:
+- Run RuboCop to check code style
+- Run unit tests (`spec/vauban/`)
+- Optionally run integration tests (commented out by default for speed)
+
+To skip the hook for a single commit (not recommended):
+```bash
+git commit --no-verify
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome! Please check the [roadmap](#roadmap--future-improvements) above for areas where contributions would be especially valuable.

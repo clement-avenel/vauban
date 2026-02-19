@@ -1,0 +1,33 @@
+#!/bin/bash
+# Install pre-commit hook
+# This script copies the pre-commit hook to .git/hooks/
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+HOOK_SOURCE="$PROJECT_ROOT/bin/pre-commit"
+HOOK_TARGET="$PROJECT_ROOT/.git/hooks/pre-commit"
+
+if [ ! -d "$PROJECT_ROOT/.git" ]; then
+  echo "Error: Not in a git repository"
+  exit 1
+fi
+
+if [ ! -f "$HOOK_SOURCE" ]; then
+  echo "Error: Pre-commit hook not found at $HOOK_SOURCE"
+  exit 1
+fi
+
+# Create hooks directory if it doesn't exist
+mkdir -p "$PROJECT_ROOT/.git/hooks"
+
+# Copy and make executable
+cp "$HOOK_SOURCE" "$HOOK_TARGET"
+chmod +x "$HOOK_TARGET"
+
+echo "✓ Pre-commit hook installed successfully!"
+echo "  Hook location: $HOOK_TARGET"
+echo ""
+echo "The hook will run RuboCop and unit tests before each commit."
+echo "To skip the hook (not recommended), use: git commit --no-verify"
