@@ -9,6 +9,7 @@ require "vauban/relationship"
 require "vauban/permission"
 require "vauban/configuration"
 require "vauban/cache"
+require "vauban/association_preloader"
 require "vauban/batch_permission_checker"
 
 # Rails integration (auto-loaded if Rails is available)
