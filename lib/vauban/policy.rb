@@ -63,7 +63,7 @@ module Vauban
       @instances_mutex ||= Mutex.new unless @instances.is_a?(Concurrent::Map)
 
       user_key = user_key_for(user)
-      
+
       if @instances.is_a?(Concurrent::Map)
         # Use Concurrent::Map - thread-safe without explicit locking
         user_instances = @instances[user_key] ||= Concurrent::Map.new

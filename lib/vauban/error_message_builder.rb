@@ -38,7 +38,7 @@ module Vauban
       return nil if items.nil? || items.empty?
 
       formatted_items = items.map { |item| "  - #{item}" }
-      [title, *formatted_items].join("\n")
+      [ title, *formatted_items ].join("\n")
     end
 
     # Build a code block section
@@ -53,7 +53,7 @@ module Vauban
       return nil if code_lines.nil? || code_lines.empty?
 
       formatted_code = code_lines.map { |line| "     #{line}" }.join("\n")
-      [title, formatted_code].join("\n\n")
+      [ title, formatted_code ].join("\n\n")
     end
   end
 end

@@ -146,7 +146,7 @@ RSpec.describe Vauban::Cache do
     it "does nothing when cache doesn't support delete_matched" do
       # Stub respond_to? to return false for delete_matched
       allow(cache_store).to receive(:respond_to?).with(:delete_matched).and_return(false)
-      
+
       # Should not raise error even when cache doesn't support delete_matched
       # The implementation may log a warning if Rails.logger is available,
       # but the important behavior is that it doesn't crash

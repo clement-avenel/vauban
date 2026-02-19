@@ -95,10 +95,10 @@ RSpec.describe Vauban do
         end
       end
       unregistered_resource = double("Resource", id: 1, class: unregistered_resource_class)
-      
+
       # Ensure Registry returns nil for this resource class
       allow(Vauban::Registry).to receive(:policy_for).with(unregistered_resource_class).and_return(nil)
-      
+
       expect {
         Vauban.authorize(user, :view, unregistered_resource)
       }.to raise_error(Vauban::PolicyNotFound) do |error|

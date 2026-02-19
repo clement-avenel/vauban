@@ -110,7 +110,7 @@ module Vauban
           if klass < Policy && klass != Policy && klass.resource_class
             # Skip if we've already discovered and registered this policy
             next if @discovered_policy_classes.include?(klass)
-            
+
             register(klass) unless @policies[klass.resource_class]
             @discovered_policy_classes.add(klass)
           end

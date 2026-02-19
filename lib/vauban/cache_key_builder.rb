@@ -18,7 +18,7 @@ module Vauban
       def key_for_permission(user, action, resource, context: {})
         # Memoize for simple cases to avoid repeated string operations
         if simple_case?(user, resource, context)
-          cache_key_tuple = [:permission, user.id, action.to_s, resource.class.name, resource.id]
+          cache_key_tuple = [ :permission, user.id, action.to_s, resource.class.name, resource.id ]
           memoized_key = memoized_cache_key(cache_key_tuple)
           return memoized_key if memoized_key
         end
@@ -28,7 +28,7 @@ module Vauban
 
         # Memoize if it was a simple case
         if simple_case?(user, resource, context)
-          cache_key_tuple = [:permission, user.id, action.to_s, resource.class.name, resource.id]
+          cache_key_tuple = [ :permission, user.id, action.to_s, resource.class.name, resource.id ]
           memoize_cache_key(cache_key_tuple, key)
         end
 
@@ -45,7 +45,7 @@ module Vauban
       def key_for_all_permissions(user, resource, context: {})
         # Memoize for simple cases to avoid repeated string operations
         if simple_case?(user, resource, context)
-          cache_key_tuple = [:all_permissions, user.id, resource.class.name, resource.id]
+          cache_key_tuple = [ :all_permissions, user.id, resource.class.name, resource.id ]
           memoized_key = memoized_cache_key(cache_key_tuple)
           return memoized_key if memoized_key
         end
@@ -55,7 +55,7 @@ module Vauban
 
         # Memoize if it was a simple case
         if simple_case?(user, resource, context)
-          cache_key_tuple = [:all_permissions, user.id, resource.class.name, resource.id]
+          cache_key_tuple = [ :all_permissions, user.id, resource.class.name, resource.id ]
           memoize_cache_key(cache_key_tuple, key)
         end
 

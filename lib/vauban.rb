@@ -124,7 +124,7 @@ module Vauban
           "Create a policy file: app/policies/#{file_name}_policy.rb",
           "Define the policy class:"
         ]
-        
+
         code_example = [
           "class #{@expected_policy_name} < Vauban::Policy",
           "  resource #{resource_name}",
@@ -134,7 +134,7 @@ module Vauban
           "  end",
           "end"
         ]
-        
+
         ErrorMessageBuilder.build(
           ErrorMessageBuilder.section("To fix this:", fix_items),
           ErrorMessageBuilder.code_section("", code_example),

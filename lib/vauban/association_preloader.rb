@@ -47,7 +47,7 @@ module Vauban
 
     def detect_associations(resource_class)
       associations = []
-      
+
       # Check for common relationship patterns
       COMMON_ASSOCIATION_NAMES.each do |name|
         if resource_class.reflect_on_association(name.to_sym) ||

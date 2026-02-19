@@ -94,7 +94,7 @@ RSpec.describe "Vauban caching integration" do
       cache_key2 = Vauban::Cache.key_for_all_permissions(user, resource2, context: {})
 
       allow(cache_store).to receive(:fetch).and_yield
-      Vauban.batch_permissions(user, [resource, resource2], context: {})
+      Vauban.batch_permissions(user, [ resource, resource2 ], context: {})
 
       expect(cache_store).to have_received(:fetch).with(cache_key1, expires_in: 1.hour)
       expect(cache_store).to have_received(:fetch).with(cache_key2, expires_in: 1.hour)
