@@ -30,16 +30,20 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler: '4.0.3'
-          bundler-cache: true
 
-      - name: Ensure correct Bundler version
-        run: |
-          gem install bundler:4.0.3
-          bundle --version
+      - name: Install Bundler 4.0.3
+        run: gem install bundler:4.0.3
+
+      - name: Cache gems
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
 
       - name: Install gem dependencies
-        run: bundle install
+        run: bundle install --path vendor/bundle
 
       - name: Set up dummy app Rails version
         working-directory: spec/dummy
@@ -49,7 +53,7 @@ jobs:
 
       - name: Install dummy app dependencies
         working-directory: spec/dummy
-        run: bundle install
+        run: bundle install --path ../../vendor/bundle
 
       - name: Set up dummy app database
         working-directory: spec/dummy
@@ -93,13 +97,20 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
-          bundler: '4.0.3'
-          bundler-cache: true
 
-      - name: Ensure correct Bundler version
-        run: |
-          gem install bundler:4.0.3
-          bundle --version
+      - name: Install Bundler 4.0.3
+        run: gem install bundler:4.0.3
+
+      - name: Cache gems
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install gem dependencies
+        run: bundle install --path vendor/bundle
 
       - name: Run RuboCop
         run: bundle exec rubocop
@@ -116,13 +127,20 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
-          bundler: '4.0.3'
-          bundler-cache: true
 
-      - name: Ensure correct Bundler version
-        run: |
-          gem install bundler:4.0.3
-          bundle --version
+      - name: Install Bundler 4.0.3
+        run: gem install bundler:4.0.3
+
+      - name: Cache gems
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install gem dependencies
+        run: bundle install --path vendor/bundle
 
       - name: Check for known security vulnerabilities
         run: |
