@@ -39,8 +39,15 @@ module Vauban
             if resource_param.is_a?(String)
               type, id = resource_param.split(":")
               type.constantize.find(id)
-            elsif resource_param.is_a?(Hash)
-              resource_param[:type].constantize.find(resource_param[:id])
+            elsif resource_param.is_a?(Hash) || resource_param.respond_to?(:[])
+              # Handle both Hash and ActionController::Parameters
+              type = resource_param[:type] || resource_param["type"]
+              id = resource_param[:id] || resource_param["id"]
+              if type && id
+                type.constantize.find(id)
+              else
+                resource_param
+              end
             else
               resource_param
             end
