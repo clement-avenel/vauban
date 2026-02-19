@@ -207,12 +207,20 @@ RSpec.describe Vauban::Rails::ControllerHelpers, type: :controller do
 
     it "handles PolicyNotFound errors" do
       allow(controller).to receive(:current_user).and_return(user)
-      allow(Vauban::Registry).to receive(:policy_for).and_return(nil)
-      allow(Vauban).to receive(:authorize).and_raise(Vauban::PolicyNotFound, "No policy found")
+      unregistered_resource_class = Class.new do
+        def self.name
+          "UnregisteredResource"
+        end
+      end
+      unregistered_resource = double("Resource", id: 1, class: unregistered_resource_class)
+      allow(Document).to receive(:first).and_return(unregistered_resource)
+      allow(Vauban::Registry).to receive(:policy_for).with(unregistered_resource_class).and_return(nil)
 
       expect {
         get :index
-      }.to raise_error(Vauban::PolicyNotFound)
+      }.to raise_error(Vauban::PolicyNotFound) do |error|
+        expect(error.resource_class).to eq(unregistered_resource_class)
+      end
     end
   end
 end

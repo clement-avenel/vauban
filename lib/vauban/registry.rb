@@ -12,7 +12,21 @@ module Vauban
 
       def register(policy_class, package: nil, depends_on: [])
         resource_class = policy_class.resource_class
-        raise ArgumentError, "Policy must define resource_class" unless resource_class
+        unless resource_class
+          raise ArgumentError, <<~ERROR
+            Policy #{policy_class.name} must define a resource class.
+
+            To fix this, add a `resource` declaration in your policy:
+
+              class #{policy_class.name} < Vauban::Policy
+                resource YourResourceClass  # <-- Add this line
+
+                permission :view do
+                  allow_if { |resource, user| # your logic }
+                end
+              end
+          ERROR
+        end
 
         @policies ||= {}
         @resources ||= []

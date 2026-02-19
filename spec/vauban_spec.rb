@@ -89,7 +89,11 @@ RSpec.describe Vauban do
     end
 
     it "raises PolicyNotFound when no policy exists" do
-      unregistered_resource_class = Class.new
+      unregistered_resource_class = Class.new do
+        def self.name
+          "UnregisteredResource"
+        end
+      end
       unregistered_resource = double("Resource", id: 1, class: unregistered_resource_class)
       
       # Ensure Registry returns nil for this resource class
@@ -97,7 +101,13 @@ RSpec.describe Vauban do
       
       expect {
         Vauban.authorize(user, :view, unregistered_resource)
-      }.to raise_error(Vauban::PolicyNotFound)
+      }.to raise_error(Vauban::PolicyNotFound) do |error|
+        expect(error.message).to include("UnregisteredResource")
+        expect(error.message).to include("UnregisteredResourcePolicy")
+        expect(error.message).to include("app/policies/unregistered_resource_policy.rb")
+        expect(error.resource_class).to eq(unregistered_resource_class)
+        expect(error.expected_policy_name).to eq("UnregisteredResourcePolicy")
+      end
     end
 
     it "passes context to policy" do
@@ -112,7 +122,13 @@ RSpec.describe Vauban do
       other_user = double("User", id: 2)
       expect {
         Vauban.authorize(other_user, :edit, resource)
-      }.to raise_error(Vauban::Unauthorized, /Not authorized to edit/)
+      }.to raise_error(Vauban::Unauthorized) do |error|
+        expect(error.message).to include("edit")
+        expect(error.message).to include("TestResource")
+        expect(error.user).to eq(other_user)
+        expect(error.action).to eq(:edit)
+        expect(error.resource).to eq(resource)
+      end
     end
   end
 
@@ -256,10 +272,18 @@ RSpec.describe Vauban do
     end
 
     it "raises PolicyNotFound when no policy exists" do
-      unregistered_class = Class.new
+      unregistered_class = Class.new do
+        def self.name
+          "UnregisteredScopedResource"
+        end
+      end
       expect {
         Vauban.accessible_by(user, :view, unregistered_class)
-      }.to raise_error(Vauban::PolicyNotFound)
+      }.to raise_error(Vauban::PolicyNotFound) do |error|
+        expect(error.message).to include("UnregisteredScopedResource")
+        expect(error.message).to include("UnregisteredScopedResourcePolicy")
+        expect(error.resource_class).to eq(unregistered_class)
+      end
     end
 
     it "returns all records when no scope defined" do

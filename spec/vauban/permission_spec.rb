@@ -197,7 +197,12 @@ RSpec.describe Vauban::Permission do
         expect(permission.allowed?(resource, user)).to be false
 
         if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-          expect(Rails.logger).to have_received(:error).with(/Vauban permission evaluation error/)
+          expect(Rails.logger).to have_received(:error) do |message|
+            expect(message).to include("Vauban permission evaluation error")
+            expect(message).to include("Permission: :view")
+            expect(message).to include("Rule type: allow")
+            expect(message).to include("Test error")
+          end
         end
       end
 

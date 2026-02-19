@@ -247,7 +247,11 @@ This is an active project with planned improvements:
   - ✅ Cache `Vauban.can?` results
   - ✅ Cache `Registry.policy_for` lookups
   - ✅ Optimize batch operations
-- [ ] **Better Error Messages**: More descriptive errors with helpful suggestions
+- [x] **Better Error Messages**: More descriptive errors with helpful suggestions
+  - ✅ Enhanced `PolicyNotFound` with expected policy class name, file location, and code examples
+  - ✅ Enhanced `Unauthorized` with user info, available permissions, and debugging suggestions
+  - ✅ Improved permission evaluation error logging with detailed context (permission, rule type, resource, user, backtrace)
+  - ✅ Enhanced `ArgumentError` messages in Registry and Policy with actionable fixes
 - [ ] **Performance Optimizations**: 
   - Prevent N+1 queries in batch permission checks
   - Improve lazy loading

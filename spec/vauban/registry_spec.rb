@@ -46,10 +46,18 @@ RSpec.describe Vauban::Registry do
     end
 
     it "raises ArgumentError if policy doesn't define resource_class" do
-      invalid_policy = Class.new(Vauban::Policy)
+      invalid_policy = Class.new(Vauban::Policy) do
+        def self.name
+          "InvalidPolicy"
+        end
+      end
       expect {
         Vauban::Registry.register(invalid_policy)
-      }.to raise_error(ArgumentError, "Policy must define resource_class")
+      }.to raise_error(ArgumentError) do |error|
+        expect(error.message).to include("must define a resource class")
+        expect(error.message).to include("InvalidPolicy")
+        expect(error.message).to include("resource YourResourceClass")
+      end
     end
 
     it "returns the policy class" do

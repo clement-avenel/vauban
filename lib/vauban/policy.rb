@@ -70,7 +70,21 @@ module Vauban
       if resource_class.respond_to?(:all)
         resource_class.instance_exec(user, context, &scope_block)
       else
-        raise ArgumentError, "Resource class #{resource_class} does not support scoping"
+        raise ArgumentError, <<~ERROR
+          Resource class #{resource_class.name} does not support scoping.
+
+          Scoping requires the resource class to respond to `.all` (e.g., ActiveRecord models).
+
+          To fix this:
+            - If using ActiveRecord: Ensure your model inherits from ApplicationRecord or ActiveRecord::Base
+            - If using a different ORM: Implement a `.all` class method that returns a collection
+            - If scoping isn't needed: Remove the `scope :#{action}` declaration from #{self.class.name}
+
+          Example for ActiveRecord:
+            class #{resource_class.name} < ApplicationRecord
+              # Your model code
+            end
+        ERROR
       end
     end
 
