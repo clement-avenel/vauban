@@ -5,7 +5,6 @@ class DocumentsController < ApplicationController
 
   # GET /documents
   def index
-    # Use Vauban's scoping to get only documents the current user can view
     @documents = Vauban.accessible_by(current_user, :view, Document)
       .includes(:owner, :collaborators)
       .order(created_at: :desc)
@@ -16,7 +15,6 @@ class DocumentsController < ApplicationController
 
   # GET /documents/:id
   def show
-    # Authorize! raises Vauban::Unauthorized if user cannot view
     authorize! :view, @document
   end
 
@@ -29,6 +27,7 @@ class DocumentsController < ApplicationController
   def create
     @document = Document.new(document_params)
     @document.owner = current_user
+    authorize! :create, @document
 
     if @document.save
       redirect_to @document, notice: "Document was successfully created."
@@ -39,15 +38,13 @@ class DocumentsController < ApplicationController
 
   # GET /documents/:id/edit
   def edit
-    # Authorize! raises Vauban::Unauthorized if user cannot edit
     authorize! :edit, @document
   end
 
   # PATCH/PUT /documents/:id
   def update
-    # Authorize! raises Vauban::Unauthorized if user cannot edit
     authorize! :edit, @document
-
+    
     if @document.update(document_params)
       redirect_to @document, notice: "Document was successfully updated."
     else
@@ -57,9 +54,7 @@ class DocumentsController < ApplicationController
 
   # DELETE /documents/:id
   def destroy
-    # Authorize! raises Vauban::Unauthorized if user cannot delete
     authorize! :delete, @document
-
     @document.destroy
     redirect_to documents_path, notice: "Document was successfully deleted."
   end

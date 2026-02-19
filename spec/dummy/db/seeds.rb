@@ -68,18 +68,18 @@ collaboration_doc = Document.create!(
 )
 
 # Add Bob as a collaborator with edit permissions
-DocumentCollaboration.create!(
+bob_collaboration = DocumentCollaboration.create!(
   document: collaboration_doc,
-  user: bob,
-  permissions: [:edit]
+  user: bob
 )
+bob_collaboration.document_collaboration_permissions.create!(permission: "edit")
 
 # Add Charlie as a collaborator with view-only permissions
-DocumentCollaboration.create!(
+charlie_collaboration = DocumentCollaboration.create!(
   document: collaboration_doc,
-  user: charlie,
-  permissions: [:view]
+  user: charlie
 )
+charlie_collaboration.document_collaboration_permissions.create!(permission: "view")
 
 puts "✅ Seed data created!"
 puts ""

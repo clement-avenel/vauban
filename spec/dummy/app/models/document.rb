@@ -12,8 +12,8 @@ class Document < ApplicationRecord
     public
   end
 
-  def collaboration_permissions(user)
-    collaboration = document_collaborations.find_by(user: user)
-    collaboration ? collaboration.permissions : []
+  # Returns the collaboration record for a user, or nil if not a collaborator
+  def collaboration_for(user)
+    document_collaborations.includes(:document_collaboration_permissions).find_by(user: user)
   end
 end

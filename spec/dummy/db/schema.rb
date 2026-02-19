@@ -10,7 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_02_18_000003) do
+ActiveRecord::Schema[8.1].define(version: 2025_02_19_000001) do
+  create_table "document_collaboration_permissions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "document_collaboration_id", null: false
+    t.string "permission", null: false
+    t.datetime "updated_at", null: false
+    t.index ["document_collaboration_id", "permission"], name: "index_doc_collab_perms_on_collab_and_permission", unique: true
+    t.index ["document_collaboration_id"], name: "idx_on_document_collaboration_id_b6927bac13"
+  end
+
   create_table "document_collaborations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "document_id", null: false
@@ -41,6 +50,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_02_18_000003) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "document_collaboration_permissions", "document_collaborations"
   add_foreign_key "document_collaborations", "documents"
   add_foreign_key "document_collaborations", "users"
   add_foreign_key "documents", "users", column: "owner_id"
