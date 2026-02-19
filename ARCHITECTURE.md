@@ -87,8 +87,6 @@ vauban/
 │   │   ├── policy.rb                 # Policy base class
 │   │   ├── permission.rb             # Permission evaluator
 │   │   ├── registry.rb               # Policy registry
-│   │   ├── relationship.rb           # Relationship definitions
-│   │   ├── core.rb                   # Core functionality
 │   │   ├── railtie.rb                # Rails integration
 │   │   ├── rails/
 │   │   │   ├── controller_helpers.rb
@@ -136,7 +134,33 @@ You can extend `Vauban::Permission` to add custom evaluation logic.
 
 ### Custom Relationship Types
 
-Extend `Vauban::Relationship` to define custom relationship types.
+Define relationships in your policies using the `relationship` DSL method, which stores blocks that can be evaluated in permission checks.
+
+**Example:**
+
+```ruby
+class DocumentPolicy < Vauban::Policy
+  resource Document
+
+  # Define a relationship
+  relationship :owner do
+    owner
+  end
+
+  # Relationship with parameters
+  relationship :collaborator? do |user|
+    collaborators.include?(user)
+  end
+
+  # Use relationships in permissions
+  permission :view do
+    allow_if { |doc, user| evaluate_relationship(:owner, doc) == user }
+    allow_if { |doc, user| evaluate_relationship(:collaborator?, doc, user) }
+  end
+end
+```
+
+Relationships are evaluated in the resource's context using `instance_eval`, allowing you to access resource methods and associations directly. This makes relationship logic reusable and easier to maintain.
 
 ### Policy Mixins
 

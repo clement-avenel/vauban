@@ -229,6 +229,9 @@ Vauban evaluates relationships through:
 - **Direct relationships**: `document.owner == user`
 - **Indirect relationships**: `document.team.members.include?(user)`
 - **Composed relationships**: Multiple conditions combined with `&&` or `||`
+- **Reusable relationship definitions**: Using the `relationship` DSL method
+
+**Basic Relationship Checks:**
 
 ```ruby
 permission :edit do
@@ -248,6 +251,42 @@ permission :edit do
   }
 end
 ```
+
+**Reusable Relationship Definitions:**
+
+You can define relationships once and reuse them across permissions:
+
+```ruby
+class DocumentPolicy < Vauban::Policy
+  resource Document
+
+  # Define reusable relationships
+  relationship :owner do
+    owner
+  end
+
+  relationship :collaborator? do |user|
+    collaborators.include?(user)
+  end
+
+  permission :view do
+    # Use relationships in permission checks
+    allow_if { |doc, user| evaluate_relationship(:owner, doc) == user }
+    allow_if { |doc, user| evaluate_relationship(:collaborator?, doc, user) }
+    allow_if { |doc| doc.public? }
+  end
+
+  permission :edit do
+    allow_if { |doc, user| evaluate_relationship(:owner, doc) == user }
+    allow_if { |doc, user| 
+      evaluate_relationship(:collaborator?, doc, user) &&
+      doc.collaboration_permissions(user).include?(:edit)
+    }
+  end
+end
+```
+
+This approach makes relationships reusable and easier to maintain, especially when the same relationship logic is used across multiple permissions.
 
 ### 3. **Declarative DSL**
 

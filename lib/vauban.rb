@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 require "vauban/version"
-require "vauban/core"
 require "vauban/resource_identifier"
 require "vauban/error_message_builder"
 require "vauban/policy"
 require "vauban/registry"
-require "vauban/relationship"
 require "vauban/permission"
 require "vauban/configuration"
 require "vauban/cache"

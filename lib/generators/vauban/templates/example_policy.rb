@@ -21,6 +21,15 @@ class DocumentPolicy < Vauban::Policy
     allow_if { |doc, user| doc.owner == user && !doc.archived? }
   end
 
+  # Optional: Define relationships for reusable relationship logic
+  relationship :owner do
+    owner
+  end
+
+  relationship :collaborator? do |user|
+    collaborators.include?(user)
+  end
+
   # Optional: Define scopes for efficient queries
   scope :view do |user|
     Document.left_joins(:document_collaborations)

@@ -34,6 +34,95 @@ class DocumentPolicy < Vauban::Policy
 end
 ```
 
+## Using Relationships
+
+Vauban allows you to define reusable relationship logic using the `relationship` DSL method. Relationships are evaluated in the resource's context and can be used in permission checks.
+
+### Basic Relationship Definition
+
+```ruby
+class DocumentPolicy < Vauban::Policy
+  resource Document
+
+  # Simple relationship - returns the owner
+  relationship :owner do
+    owner
+  end
+
+  # Relationship with parameters - checks if user is a collaborator
+  relationship :collaborator? do |user|
+    collaborators.include?(user)
+  end
+
+  # Relationship that returns a collection
+  relationship :team_members do
+    team.members
+  end
+
+  permission :view do
+    # Use relationships in permission checks
+    allow_if { |doc, user| evaluate_relationship(:owner, doc) == user }
+    allow_if { |doc, user| evaluate_relationship(:collaborator?, doc, user) }
+    allow_if { |doc| doc.public? }
+  end
+end
+```
+
+### Using Relationships in Permissions
+
+```ruby
+class ProjectPolicy < Vauban::Policy
+  resource Project
+
+  relationship :owner do
+    owner
+  end
+
+  relationship :member? do |user|
+    members.include?(user)
+  end
+
+  relationship :admin? do |user|
+    admins.include?(user)
+  end
+
+  permission :view do
+    # Relationships make permission logic more readable
+    allow_if { |project, user| evaluate_relationship(:owner, project) == user }
+    allow_if { |project, user| evaluate_relationship(:member?, project, user) }
+  end
+
+  permission :edit do
+    allow_if { |project, user| evaluate_relationship(:owner, project) == user }
+    allow_if { |project, user| evaluate_relationship(:admin?, project, user) }
+  end
+end
+```
+
+### Relationship Evaluation Context
+
+Relationships are evaluated in the resource's context, so you can access resource methods directly:
+
+```ruby
+class CommentPolicy < Vauban::Policy
+  resource Comment
+
+  # Access resource methods directly
+  relationship :author do
+    user  # 'user' refers to comment.user
+  end
+
+  relationship :post_owner do
+    post.user  # Access associations
+  end
+
+  permission :delete do
+    allow_if { |comment, user| evaluate_relationship(:author, comment) == user }
+    allow_if { |comment, user| evaluate_relationship(:post_owner, comment) == user }
+  end
+end
+```
+
 ## Controller Usage
 
 ```ruby

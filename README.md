@@ -72,6 +72,34 @@ class DocumentPolicy < Vauban::Policy
   permission :delete do
     allow_if { |doc, user| doc.owner == user && !doc.archived? }
   end
+
+  # Optional: Define relationships for reusable relationship logic
+  relationship :owner do
+    owner
+  end
+
+  relationship :collaborator? do |user|
+    collaborators.include?(user)
+  end
+end
+```
+
+**Using Relationships in Permissions:**
+
+You can use the `evaluate_relationship` method in your permission blocks:
+
+```ruby
+class DocumentPolicy < Vauban::Policy
+  resource Document
+
+  relationship :owner do
+    owner
+  end
+
+  permission :view do
+    allow_if { |doc, user| evaluate_relationship(:owner, doc) == user }
+    allow_if { |doc, user| doc.public? }
+  end
 end
 ```
 
