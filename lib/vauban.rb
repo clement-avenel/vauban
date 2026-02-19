@@ -3,6 +3,7 @@
 require "vauban/version"
 require "vauban/core"
 require "vauban/resource_identifier"
+require "vauban/error_message_builder"
 require "vauban/policy"
 require "vauban/registry"
 require "vauban/relationship"
@@ -31,30 +32,42 @@ module Vauban
       @available_permissions = available_permissions
       @context = context
 
-      user_info = ResourceIdentifier.user_info_string(user)
-      resource_info = ResourceIdentifier.resource_info_string(resource)
-      permissions_info = permissions_info_string(available_permissions)
-
-      message = build_message(user_info, resource_info, permissions_info)
+      message = build_message
       super(message)
     end
 
     private
 
-    def build_message(user_info, resource_info, permissions_info)
-      msg = "Not authorized to perform '#{@action}' on #{resource_info}"
-      msg += "\n\nUser: #{user_info}" if user_info
-      msg += "\n\nAvailable permissions: #{permissions_info}" if permissions_info
-      msg += "\n\nTo debug:" unless @context.empty?
-      msg += "\n  - Check your policy's :#{@action} permission rules"
-      msg += "\n  - Verify the user has the required relationships"
-      msg += "\n  - Review context: #{@context.inspect}" unless @context.empty?
-      msg
+    def build_message
+      user_info = ResourceIdentifier.user_info_string(@user)
+      resource_info = ResourceIdentifier.resource_info_string(@resource)
+      permissions_info = permissions_info_string(@available_permissions)
+
+      parts = [
+        "Not authorized to perform '#{@action}' on #{resource_info}",
+        ("User: #{user_info}" if user_info),
+        ("Available permissions: #{permissions_info}" if permissions_info),
+        debug_section
+      ]
+
+      ErrorMessageBuilder.build(*parts)
     end
 
     def permissions_info_string(permissions)
       return "none" if permissions.nil? || permissions.empty?
       permissions.map { |p| ":#{p}" }.join(", ")
+    end
+
+    def debug_section
+      return nil if @context.empty?
+
+      debug_items = [
+        "Check your policy's :#{@action} permission rules",
+        "Verify the user has the required relationships"
+      ]
+      debug_items << "Review context: #{@context.inspect}" unless @context.empty?
+
+      ErrorMessageBuilder.section("To debug:", debug_items)
     end
   end
 
@@ -94,29 +107,46 @@ module Vauban
     end
 
     def build_message(resource_name)
-      msg = "No policy found for #{resource_name}"
-      msg += "\n\nExpected policy class: #{@expected_policy_name}"
-      msg += "\n\nTo fix this:"
-      
+      parts = [
+        "No policy found for #{resource_name}",
+        "Expected policy class: #{@expected_policy_name}",
+        fix_section(resource_name),
+        ("Context: #{@context.inspect}" unless @context.empty?)
+      ]
+
+      ErrorMessageBuilder.build(*parts)
+    end
+
+    def fix_section(resource_name)
       if resource_name != "Unknown"
         file_name = underscore_class_name(resource_name)
-        msg += "\n  1. Create a policy file: app/policies/#{file_name}_policy.rb"
-        msg += "\n  2. Define the policy class:"
-        msg += "\n\n     class #{@expected_policy_name} < Vauban::Policy"
-        msg += "\n       resource #{resource_name}"
-        msg += "\n"
-        msg += "\n       permission :view do"
-        msg += "\n         allow_if { |resource, user| # your authorization logic }"
-        msg += "\n       end"
-        msg += "\n     end"
-        msg += "\n\n  3. If using Packwerk, place it in: packs/*/app/policies/#{file_name}_policy.rb"
+        fix_items = [
+          "Create a policy file: app/policies/#{file_name}_policy.rb",
+          "Define the policy class:"
+        ]
+        
+        code_example = [
+          "class #{@expected_policy_name} < Vauban::Policy",
+          "  resource #{resource_name}",
+          "",
+          "  permission :view do",
+          "    allow_if { |resource, user| # your authorization logic }",
+          "  end",
+          "end"
+        ]
+        
+        ErrorMessageBuilder.build(
+          ErrorMessageBuilder.section("To fix this:", fix_items),
+          ErrorMessageBuilder.code_section("", code_example),
+          "If using Packwerk, place it in: packs/*/app/policies/#{file_name}_policy.rb"
+        )
       else
-        msg += "\n  1. Create a policy class that inherits from Vauban::Policy"
-        msg += "\n  2. Register it using Vauban::Registry.register"
+        fix_items = [
+          "Create a policy class that inherits from Vauban::Policy",
+          "Register it using Vauban::Registry.register"
+        ]
+        ErrorMessageBuilder.section("To fix this:", fix_items)
       end
-      
-      msg += "\n\nContext: #{@context.inspect}" unless @context.empty?
-      msg
     end
   end
 
@@ -135,15 +165,21 @@ module Vauban
     private
 
     def build_message
-      msg = "Resource not found"
-      msg += "\n\nResource class: #{@resource_class.name}" if @resource_class
-      msg += "\nIdentifier: #{@identifier.inspect}" if @identifier
-      msg += "\n\nTo fix this:"
-      msg += "\n  - Ensure the resource exists before authorization"
-      msg += "\n  - Check that the identifier is correct"
-      msg += "\n  - Verify the resource class is correct"
-      msg += "\n\nContext: #{@context.inspect}" unless @context.empty?
-      msg
+      fix_items = [
+        "Ensure the resource exists before authorization",
+        "Check that the identifier is correct",
+        "Verify the resource class is correct"
+      ]
+
+      parts = [
+        "Resource not found",
+        ("Resource class: #{@resource_class.name}" if @resource_class),
+        ("Identifier: #{@identifier.inspect}" if @identifier),
+        ErrorMessageBuilder.section("To fix this:", fix_items),
+        ("Context: #{@context.inspect}" unless @context.empty?)
+      ]
+
+      ErrorMessageBuilder.build(*parts)
     end
   end
 
