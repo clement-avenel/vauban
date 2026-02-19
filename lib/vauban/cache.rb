@@ -30,9 +30,8 @@ module Vauban
 
         cache_store.fetch(key, expires_in: ttl, &block)
       rescue StandardError => e
-        # If caching fails, log error and execute block
-        log_cache_error(e, key)
-        yield
+        # If caching fails, log error and execute block (fail-safe)
+        ErrorHandler.handle_cache_error(e, key: key, &block)
       end
 
       # Delete cache entry
@@ -41,7 +40,8 @@ module Vauban
 
         cache_store.delete(key)
       rescue StandardError => e
-        log_cache_error(e, key)
+        # Log error but don't fail - cache deletion is non-critical
+        ErrorHandler.handle_cache_error(e, key: key)
       end
 
       # Clear all Vauban cache entries
@@ -58,7 +58,8 @@ module Vauban
           end
         end
       rescue StandardError => e
-        log_cache_error(e, "clear")
+        # Log error but don't fail - cache clearing is non-critical
+        ErrorHandler.handle_cache_error(e, key: "clear")
       end
 
       # Clear cache for a specific resource (useful when resource is updated)
@@ -72,7 +73,8 @@ module Vauban
           cache_store.delete_matched(pattern)
         end
       rescue StandardError => e
-        log_cache_error(e, "clear_for_resource")
+        # Log error but don't fail - cache clearing is non-critical
+        ErrorHandler.handle_cache_error(e, key: "clear_for_resource")
       end
 
       # Clear cache for a specific user (useful when user permissions change)
@@ -86,7 +88,8 @@ module Vauban
           cache_store.delete_matched(pattern)
         end
       rescue StandardError => e
-        log_cache_error(e, "clear_for_user")
+        # Log error but don't fail - cache clearing is non-critical
+        ErrorHandler.handle_cache_error(e, key: "clear_for_user")
       end
 
       # Clear memoized cache keys (useful for testing)
@@ -102,12 +105,6 @@ module Vauban
 
       def cache_store
         Vauban.config.cache_store
-      end
-
-      def log_cache_error(error, key)
-        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-          Rails.logger.error("Vauban cache error for key '#{key}': #{error.message}")
-        end
       end
     end
   end

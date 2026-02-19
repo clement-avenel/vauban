@@ -40,7 +40,7 @@ module Vauban
     rescue StandardError => e
       # If preloading fails, log but don't fail the authorization check
       # This is a performance optimization, not a critical feature
-      log_preload_error(e)
+      ErrorHandler.handle_non_critical_error(e, operation: "association preloading")
     end
 
     private
@@ -66,12 +66,6 @@ module Vauban
 
     def active_record_available?
       defined?(ActiveRecord) && defined?(ActiveRecord::Base)
-    end
-
-    def log_preload_error(error)
-      if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-        Rails.logger.warn("Vauban: Failed to preload associations: #{error.message}")
-      end
     end
   end
 end

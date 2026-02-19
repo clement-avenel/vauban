@@ -49,30 +49,20 @@ module Vauban
       end
     rescue StandardError => e
       # Log error with detailed context but don't fail authorization
-      if defined?(::Rails) && ::Rails.respond_to?(:logger) && ::Rails.logger
-        log_permission_error(e, rule, resource, user, context, policy)
-      end
-      false
-    end
-
-    def log_permission_error(error, rule, resource, user, context, policy)
-      resource_info = ResourceIdentifier.resource_info_string(resource)
-      user_info = ResourceIdentifier.user_info_string(user)
-      policy_info = policy ? policy.class.name : "none"
       rule_location = rule_location_string(rule)
-
-      message = "Vauban permission evaluation error"
-      message += "\n  Permission: :#{@name}"
-      message += "\n  Rule type: #{rule.type}"
-      message += "\n  Policy: #{policy_info}"
-      message += "\n  Resource: #{resource_info}"
-      message += "\n  User: #{user_info}"
-      message += "\n  Context: #{context.inspect}" unless context.empty?
-      message += "\n  Rule location: #{rule_location}" if rule_location
-      message += "\n  Error: #{error.class.name}: #{error.message}"
-      message += "\n  Backtrace:\n    #{error.backtrace&.first(5)&.join("\n    ")}"
-
-      ::Rails.logger.error(message)
+      ErrorHandler.handle_permission_error(
+        e,
+        permission: @name,
+        rule_type: rule.type,
+        context: {
+          resource: resource,
+          user: user,
+          policy: policy,
+          context: context,
+          rule_location: rule_location
+        }
+      )
+      false
     end
 
     def rule_location_string(rule)
@@ -81,7 +71,8 @@ module Vauban
       file, line = rule.block.source_location
       return nil unless file && line
       "#{file}:#{line}"
-    rescue StandardError
+    rescue StandardError => e
+      # Silently ignore errors when extracting source location
       nil
     end
 

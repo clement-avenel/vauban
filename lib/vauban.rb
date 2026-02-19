@@ -3,6 +3,7 @@
 require "vauban/version"
 require "vauban/resource_identifier"
 require "vauban/error_message_builder"
+require "vauban/error_handler"
 require "vauban/policy"
 require "vauban/registry"
 require "vauban/permission"
@@ -226,7 +227,12 @@ module Vauban
         policy = policy_class.instance_for(user)
         policy.allowed?(action, resource, user, context: context)
       end
-    rescue StandardError
+    rescue StandardError => e
+      # Fail-safe: deny access on any error
+      # Only log in development/test to avoid noise in production
+      if development_or_test?
+        ErrorHandler.handle_authorization_error(e, context: { action: action, resource: resource.class.name })
+      end
       false
     end
 
@@ -242,6 +248,11 @@ module Vauban
         policy = policy_class.instance_for(user)
         policy.all_permissions(user, resource, context: context)
       end
+    rescue StandardError => e
+      # Fail-safe: return empty permissions on error
+      # Log in development/test to help debug issues
+      ErrorHandler.handle_authorization_error(e, context: { resource: resource.class.name }) if development_or_test?
+      {}
     end
 
     # Batch check permissions for multiple resources
@@ -283,5 +294,9 @@ module Vauban
     end
 
     private
+
+    def development_or_test?
+      defined?(::Rails) && ::Rails.respond_to?(:env) && (::Rails.env.development? || ::Rails.env.test?)
+    end
   end
 end
