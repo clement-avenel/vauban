@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test (Ruby ${{ matrix.ruby }}, Rails ${{ matrix.rails }})
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.0', '3.1', '3.2', '3.3']
+        rails: ['6.0', '6.1', '7.0', '7.1', '8.0', '8.1']
+        exclude:
+          # Exclude incompatible combinations
+          - ruby: '3.0'
+            rails: '8.1'  # Rails 8.1 may have issues with Ruby 3.0
+          - ruby: '3.1'
+            rails: '8.1'  # Rails 8.1 may have issues with Ruby 3.1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Install gem dependencies
+        run: bundle install
+
+      - name: Set up dummy app Rails version
+        working-directory: spec/dummy
+        run: |
+          # Update Rails version in dummy app Gemfile for testing
+          ruby -i.bak -pe 'gsub(/gem\s+"rails"(?:,\s*[^"]+)?/, "gem \"rails\", \"~> ${{ matrix.rails }}.0\"")' Gemfile
+
+      - name: Install dummy app dependencies
+        working-directory: spec/dummy
+        run: bundle install
+
+      - name: Set up dummy app database
+        working-directory: spec/dummy
+        env:
+          RAILS_ENV: test
+        run: |
+          bundle exec rails db:create db:migrate
+
+      - name: Run unit tests
+        run: bundle exec rspec spec/vauban/
+
+      - name: Run integration tests
+        run: bundle exec rspec spec/integration/
+        env:
+          RAILS_ENV: test
+
+      - name: Restore dummy app Gemfile
+        if: always()
+        working-directory: spec/dummy
+        run: |
+          if [ -f Gemfile.bak ]; then
+            mv Gemfile.bak Gemfile
+          fi
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: matrix.ruby == '3.3' && matrix.rails == '8.0'
+        with:
+          files: ./coverage/coverage.json
+          fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Run RuboCop
+        run: bundle exec rubocop
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Check for known security vulnerabilities
+        run: |
+          gem install bundler-audit
+          bundle audit check --update || true
+        continue-on-error: true
