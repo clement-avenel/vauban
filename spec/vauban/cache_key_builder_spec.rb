@@ -117,10 +117,10 @@ RSpec.describe Vauban::CacheKeyBuilder do
     it "clears memoized cache keys" do
       # Generate a key to populate cache
       described_class.key_for_permission(user, :view, resource)
-      
+
       # Clear cache
       described_class.clear_key_cache!
-      
+
       # Generate same key again - should still work
       key = described_class.key_for_permission(user, :view, resource)
       expect(key).to be_a(String)

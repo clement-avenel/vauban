@@ -45,7 +45,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
     end
 
     it "returns permissions hash for each resource" do
-      checker = described_class.new(user, [resource1, resource2])
+      checker = described_class.new(user, [ resource1, resource2 ])
       result = checker.call
 
       expect(result).to be_a(Hash)
@@ -55,7 +55,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
     end
 
     it "calculates permissions for each resource" do
-      checker = described_class.new(user, [resource1])
+      checker = described_class.new(user, [ resource1 ])
       result = checker.call
 
       expect(result[resource1]).to have_key("view")
@@ -65,7 +65,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
     end
 
     it "passes context to permission checks" do
-      checker = described_class.new(user, [resource1], context: { project: 1 })
+      checker = described_class.new(user, [ resource1 ], context: { project: 1 })
       result = checker.call
 
       expect(result[resource1]).to be_a(Hash)
@@ -88,7 +88,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
       other_resource = double("OtherResource", id: 3, class: other_resource_class)
       allow(other_resource).to receive(:class).and_return(other_resource_class)
 
-      checker = described_class.new(user, [resource1, other_resource])
+      checker = described_class.new(user, [ resource1, other_resource ])
       result = checker.call
 
       expect(result.keys).to include(resource1, other_resource)
@@ -101,7 +101,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
       unregistered_resource = double("UnregisteredResource", id: 4, class: unregistered_class)
       allow(unregistered_resource).to receive(:class).and_return(unregistered_class)
 
-      checker = described_class.new(user, [unregistered_resource])
+      checker = described_class.new(user, [ unregistered_resource ])
       result = checker.call
 
       expect(result[unregistered_resource]).to eq({})
@@ -143,7 +143,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
           cache_key1 => cached_permissions
         )
 
-        checker = described_class.new(user, [resource1, resource2])
+        checker = described_class.new(user, [ resource1, resource2 ])
         result = checker.call
 
         expect(result[resource1]).to eq(cached_permissions)
@@ -162,7 +162,7 @@ RSpec.describe Vauban::BatchPermissionChecker do
         end
         allow(cache_store).to receive(:respond_to?).with(:read_multi).and_return(false)
 
-        checker = described_class.new(user, [resource1])
+        checker = described_class.new(user, [ resource1 ])
         result = checker.call
 
         expect(result[resource1]).to be_a(Hash)

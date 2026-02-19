@@ -14,7 +14,7 @@ RSpec.describe Vauban::ResourceIdentifier do
     end
 
     it "returns 'user:key' for user with to_key" do
-      user = double("User", to_key: [1, 2, 3])
+      user = double("User", to_key: [ 1, 2, 3 ])
       expect(described_class.user_id_for(user)).to eq("user:1-2-3")
     end
 

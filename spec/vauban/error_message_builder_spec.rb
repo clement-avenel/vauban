@@ -20,7 +20,7 @@ RSpec.describe Vauban::ErrorMessageBuilder do
     end
 
     it "joins array parts with single newlines" do
-      result = described_class.build("Part 1", ["Line 1", "Line 2"], "Part 2")
+      result = described_class.build("Part 1", [ "Line 1", "Line 2" ], "Part 2")
       expect(result).to eq("Part 1\n\nLine 1\nLine 2\n\nPart 2")
     end
 
@@ -37,7 +37,7 @@ RSpec.describe Vauban::ErrorMessageBuilder do
 
   describe ".section" do
     it "formats section with title and items" do
-      result = described_class.section("Title:", ["Item 1", "Item 2"])
+      result = described_class.section("Title:", [ "Item 1", "Item 2" ])
       expect(result).to eq("Title:\n  - Item 1\n  - Item 2")
     end
 
@@ -50,14 +50,14 @@ RSpec.describe Vauban::ErrorMessageBuilder do
     end
 
     it "handles single item" do
-      result = described_class.section("Title:", ["Item 1"])
+      result = described_class.section("Title:", [ "Item 1" ])
       expect(result).to eq("Title:\n  - Item 1")
     end
   end
 
   describe ".code_section" do
     it "formats code section with indentation" do
-      result = described_class.code_section("Example:", ["class Foo", "  def bar", "  end"])
+      result = described_class.code_section("Example:", [ "class Foo", "  def bar", "  end" ])
       expect(result).to eq("Example:\n\n     class Foo\n       def bar\n       end")
     end
 
@@ -70,7 +70,7 @@ RSpec.describe Vauban::ErrorMessageBuilder do
     end
 
     it "handles single line of code" do
-      result = described_class.code_section("Example:", ["class Foo"])
+      result = described_class.code_section("Example:", [ "class Foo" ])
       expect(result).to eq("Example:\n\n     class Foo")
     end
   end

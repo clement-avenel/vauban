@@ -65,16 +65,16 @@ RSpec.describe "Vauban Rails Integration", type: :request do
       collaboration = DocumentCollaboration.create!(
         document: document,
         user: other_user,
-        permissions: [:edit]
+        permissions: [ :edit ]
       )
       # Reload document and preload associations to ensure fresh data
       reloaded_doc = Document.includes(:collaborators, :document_collaborations).find(document.id)
       reloaded_doc.association(:collaborators).load_target
       reloaded_doc.association(:document_collaborations).load_target
-      
+
       # Verify collaborator can view (this tests the collaborator association)
       expect(Vauban.can?(other_user, :view, reloaded_doc)).to be true
-      
+
       # Note: Edit permission check requires collaboration_permissions to return symbols
       # or policy to check for both symbols and strings. JSON serialization converts
       # symbols to strings, so the policy check may fail. This tests the collaborator
@@ -85,7 +85,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
       collaboration = DocumentCollaboration.create!(
         document: document,
         user: other_user,
-        permissions: ["view"] # Use string array to match JSON serialization
+        permissions: [ "view" ] # Use string array to match JSON serialization
       )
       reloaded_doc = Document.includes(:collaborators, :document_collaborations).find(document.id)
       reloaded_doc.association(:collaborators).load_target
@@ -106,8 +106,8 @@ RSpec.describe "Vauban Rails Integration", type: :request do
 
     it "returns batch permissions for multiple resources" do
       doc2 = Document.create!(title: "Doc 2", owner: user, public: true)
-      result = Vauban.batch_permissions(user, [document, doc2])
-      
+      result = Vauban.batch_permissions(user, [ document, doc2 ])
+
       expect(result).to be_a(Hash)
       expect(result[document]).to be_a(Hash)
       expect(result[doc2]).to be_a(Hash)
@@ -120,7 +120,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     it "returns scoped documents user can view" do
       public_doc = Document.create!(title: "Public", owner: other_user, public: true)
       private_doc = Document.create!(title: "Private", owner: other_user, public: false)
-      
+
       scoped = Vauban.accessible_by(user, :view, Document)
       expect(scoped).to include(document) # user's own document
       expect(scoped).to include(public_doc) # public document
@@ -131,9 +131,9 @@ RSpec.describe "Vauban Rails Integration", type: :request do
       collaboration = DocumentCollaboration.create!(
         document: document,
         user: other_user,
-        permissions: [:view]
+        permissions: [ :view ]
       )
-      
+
       scoped = Vauban.accessible_by(other_user, :view, Document)
       expect(scoped).to include(document)
     end
@@ -150,7 +150,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     it "authorize! allows authorized actions" do
       allow(controller_instance).to receive(:current_user).and_return(user)
       controller_instance.instance_variable_set(:@document, document)
-      
+
       expect {
         controller_instance.send(:authorize!, :view, document)
       }.not_to raise_error
@@ -159,7 +159,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     it "authorize! raises Unauthorized for unauthorized actions" do
       allow(controller_instance).to receive(:current_user).and_return(other_user)
       controller_instance.instance_variable_set(:@document, document)
-      
+
       expect {
         controller_instance.send(:authorize!, :edit, document)
       }.to raise_error(Vauban::Unauthorized)
@@ -215,7 +215,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
       view.extend(Vauban::Rails::ViewHelpers)
       allow(view).to receive(:current_user).and_return(user)
       expect(view.cannot?(:view, document)).to be false
-      
+
       allow(view).to receive(:current_user).and_return(other_user)
       expect(view.cannot?(:view, document)).to be true
     end
@@ -241,17 +241,17 @@ RSpec.describe "Vauban Rails Integration", type: :request do
         def current_user
           @current_user ||= User.find(session[:demo_user_id]) if session[:demo_user_id]
         end
-        
+
         def render(options = {})
           @rendered = options
         end
-        
+
         attr_reader :rendered
-        
+
         def params
           @params ||= ActionController::Parameters.new({})
         end
-        
+
         def params=(value)
           @params = value.is_a?(ActionController::Parameters) ? value : ActionController::Parameters.new(value)
         end
@@ -277,9 +277,9 @@ RSpec.describe "Vauban Rails Integration", type: :request do
             { type: "Document", id: document.id.to_s }
           ]
         )
-        
+
         api_controller.check
-        
+
         expect(api_controller.rendered[:json]).to have_key(:permissions)
         expect(api_controller.rendered[:json][:permissions]).to be_an(Array)
         expect(api_controller.rendered[:json][:permissions].first).to have_key(:permissions)
@@ -288,11 +288,11 @@ RSpec.describe "Vauban Rails Integration", type: :request do
 
       it "handles string resource format" do
         api_controller.params = ActionController::Parameters.new(
-          resources: ["Document:#{document.id}"]
+          resources: [ "Document:#{document.id}" ]
         )
-        
+
         api_controller.check
-        
+
         expect(api_controller.rendered[:json][:permissions]).to be_an(Array)
       end
 
@@ -302,9 +302,9 @@ RSpec.describe "Vauban Rails Integration", type: :request do
             { type: "Document", id: document.id.to_s }
           ]
         )
-        
+
         api_controller.check
-        
+
         expect(api_controller.rendered[:json][:permissions]).to be_an(Array)
       end
 
@@ -316,20 +316,20 @@ RSpec.describe "Vauban Rails Integration", type: :request do
             { type: "Document", id: doc2.id.to_s }
           ]
         )
-        
+
         api_controller.check
-        
+
         expect(api_controller.rendered[:json][:permissions].length).to eq(2)
       end
 
       it "handles direct resource objects" do
         # When resources are passed as objects directly, find_resource returns them as-is
         api_controller.params = ActionController::Parameters.new(
-          resources: [document]
+          resources: [ document ]
         )
-        
+
         api_controller.check
-        
+
         expect(api_controller.rendered[:json][:permissions]).to be_an(Array)
         expect(api_controller.rendered[:json][:permissions].length).to eq(1)
       end
@@ -338,7 +338,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     describe "#schema" do
       it "returns schema with resources and permissions" do
         api_controller.schema
-        
+
         expect(api_controller.rendered[:json]).to have_key(:resources)
         expect(api_controller.rendered[:json][:resources]).to be_an(Array)
         document_resource = api_controller.rendered[:json][:resources].find { |r| r[:type] == "Document" }
@@ -348,7 +348,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
 
       it "includes relationships in schema when defined" do
         api_controller.schema
-        
+
         document_resource = api_controller.rendered[:json][:resources].find { |r| r[:type] == "Document" }
         expect(document_resource).to have_key(:relationships)
         # Relationships may be empty if not defined in policy
@@ -377,7 +377,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
       end
       stub_const("UnregisteredResource", unregistered_class)
       unregistered_resource = unregistered_class.create!(title: "Test", owner_id: user.id)
-      
+
       expect {
         Vauban.authorize(user, :view, unregistered_resource)
       }.to raise_error(Vauban::PolicyNotFound) do |error|
@@ -394,7 +394,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
       controller.response = ActionDispatch::TestResponse.new
       allow(controller).to receive(:current_user).and_return(other_user)
       controller.instance_variable_set(:@document, document)
-      
+
       expect {
         controller.send(:authorize!, :edit, document)
       }.to raise_error(Vauban::Unauthorized)
