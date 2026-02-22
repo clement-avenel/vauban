@@ -192,6 +192,42 @@ end
 | `relationship :name { ... }` | Defines a reusable relationship block |
 | `condition :name { \|resource, user, context\| ... }` | Defines a reusable condition block |
 
+## Testing Your Policies
+
+Vauban ships with RSpec matchers. Add to your `spec_helper.rb` or `rails_helper.rb`:
+
+```ruby
+require "vauban/rspec"
+```
+
+Then use `be_able_to` to test through the full authorization stack:
+
+```ruby
+RSpec.describe DocumentPolicy do
+  let(:user) { create(:user) }
+  let(:document) { create(:document, owner: user) }
+
+  it { expect(user).to be_able_to(:view, document) }
+  it { expect(user).to be_able_to(:edit, document) }
+  it { expect(other_user).not_to be_able_to(:edit, document) }
+
+  it { expect(user).to be_able_to(:admin, document).with_context(admin: true) }
+end
+```
+
+Or use `permit` to test a policy class directly (bypasses Registry and cache):
+
+```ruby
+RSpec.describe DocumentPolicy do
+  let(:user) { create(:user) }
+  let(:document) { create(:document, owner: user) }
+
+  it { expect(DocumentPolicy).to permit(:view).for(user, document) }
+  it { expect(DocumentPolicy).not_to permit(:edit).for(other_user, document) }
+  it { expect(DocumentPolicy).to permit(:admin).for(user, document).with_context(admin: true) }
+end
+```
+
 ## Development
 
 ### Requirements
@@ -243,13 +279,13 @@ chmod +x bin/install-pre-commit
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and implementation details
 - **[EXAMPLES.md](./EXAMPLES.md)** - Comprehensive code examples and use cases
 - **[TESTING.md](./TESTING.md)** - Testing guide and best practices
+- **[SECURITY.md](./SECURITY.md)** - Security policy and responsible disclosure
 
 ## Roadmap
 
 ### Medium Priority
 - **Developer Experience**: Debug mode with detailed logging, policy validation
-- **Testing Utilities**: RSpec matchers (`expect(user).to be_able_to(:edit, document)`)
-- **Documentation**: YARD API docs, performance benchmarks
+- **Documentation**: Performance benchmarks
 
 ### Nice to Have
 - **Advanced Features**: Permission inheritance/composition, time-based permissions
@@ -258,6 +294,10 @@ chmod +x bin/install-pre-commit
 ## Contributing
 
 Bug reports and pull requests are welcome on [GitHub](https://github.com/clement-avenel/vauban).
+
+## Security
+
+See [SECURITY.md](./SECURITY.md) for our responsible disclosure policy.
 
 ## License
 
