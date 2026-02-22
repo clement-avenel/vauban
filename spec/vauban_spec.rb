@@ -104,7 +104,6 @@ RSpec.describe Vauban do
       }.to raise_error(Vauban::PolicyNotFound) do |error|
         expect(error.message).to include("UnregisteredResource")
         expect(error.message).to include("UnregisteredResourcePolicy")
-        expect(error.message).to include("app/policies/unregistered_resource_policy.rb")
         expect(error.resource_class).to eq(unregistered_resource_class)
         expect(error.expected_policy_name).to eq("UnregisteredResourcePolicy")
       end

@@ -389,9 +389,8 @@ RSpec.describe Vauban::Policy do
       expect {
         policy.scope(user, :view)
       }.to raise_error(ArgumentError) do |error|
-        expect(error.message).to include("does not support scoping")
+        expect(error.message).to include("must respond to .all")
         expect(error.message).to include("NonARResource")
-        expect(error.message).to include(".all")
       end
     end
   end

@@ -2,40 +2,32 @@
 
 module Vauban
   class Permission
-    attr_reader :name, :rules
+    attr_reader :name
+
+    Rule = Struct.new(:type, :block)
 
     def initialize(name, &block)
       @name = name
-      @rules = []
       @allow_rules = []
       @deny_rules = []
       instance_eval(&block) if block_given?
     end
 
     def allow_if(&block)
-      rule = Rule.new(:allow, block)
-      @rules << rule
-      @allow_rules << rule
+      @allow_rules << Rule.new(:allow, block)
     end
 
     def deny_if(&block)
-      rule = Rule.new(:deny, block)
-      @rules << rule
-      @deny_rules << rule
+      @deny_rules << Rule.new(:deny, block)
+    end
+
+    def rules
+      @deny_rules + @allow_rules
     end
 
     def allowed?(resource, user, context: {}, policy: nil)
-      # Check deny rules first (no type checking needed - already separated)
-      @deny_rules.each do |rule|
-        return false if evaluate_rule(rule, resource, user, context, policy)
-      end
-
-      # Check allow rules (no type checking needed - already separated)
-      @allow_rules.each do |rule|
-        return true if evaluate_rule(rule, resource, user, context, policy)
-      end
-
-      # Default deny
+      @deny_rules.each { |rule| return false if evaluate_rule(rule, resource, user, context, policy) }
+      @allow_rules.each { |rule| return true if evaluate_rule(rule, resource, user, context, policy) }
       false
     end
 
@@ -48,34 +40,14 @@ module Vauban
         rule.block.call(resource, user, context)
       end
     rescue StandardError => e
-      # Log error with detailed context but don't fail authorization
-      rule_location = rule_location_string(rule)
       ErrorHandler.handle_permission_error(
         e,
         permission: @name,
         rule_type: rule.type,
-        context: {
-          resource: resource,
-          user: user,
-          policy: policy,
-          context: context,
-          rule_location: rule_location
-        }
+        context: { resource: resource, user: user, policy: policy, context: context,
+                   rule_location: rule.block.respond_to?(:source_location) ? rule.block.source_location&.join(":") : nil }
       )
       false
     end
-
-    def rule_location_string(rule)
-      # Try to extract source location from the block
-      return nil unless rule.block.respond_to?(:source_location)
-      file, line = rule.block.source_location
-      return nil unless file && line
-      "#{file}:#{line}"
-    rescue StandardError => e
-      # Silently ignore errors when extracting source location
-      nil
-    end
-
-    Rule = Struct.new(:type, :block)
   end
 end

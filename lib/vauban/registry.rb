@@ -12,126 +12,77 @@ module Vauban
         @resources = []
       end
 
-      def register(policy_class, package: nil, depends_on: [])
+      def register(policy_class)
         resource_class = policy_class.resource_class
-        unless resource_class
-          raise ArgumentError, <<~ERROR
-            Policy #{policy_class.name} must define a resource class.
-
-            To fix this, add a `resource` declaration in your policy:
-
-              class #{policy_class.name} < Vauban::Policy
-                resource YourResourceClass  # <-- Add this line
-
-                permission :view do
-                  allow_if { |resource, user| # your logic }
-                end
-              end
-          ERROR
-        end
-
-        @policies ||= {}
-        @resources ||= []
+        raise ArgumentError, "Policy #{policy_class.name} must declare `resource SomeModel`" unless resource_class
 
         @policies[resource_class] = policy_class
         @resources << resource_class unless @resources.include?(resource_class)
-
-        policy_class.package = package if package
-        policy_class.depends_on = depends_on if depends_on.any?
-
         policy_class
       end
 
       def policy_for(resource_class)
-        @policies ||= {}
         return nil unless resource_class
 
-        # Cache policy lookup (but not lazy discovery results)
-        cache_key = Vauban::Cache.key_for_policy(resource_class)
-
-        Vauban::Cache.fetch(cache_key) do
-          result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
-
-          # If policy not found, try lazy discovery (for autoloading in development)
-          if result.nil? && resource_class.respond_to?(:name) && resource_class.name
-            # Try to trigger autoloading by constantizing the expected policy class name
-            policy_class_name = "#{resource_class.name}Policy"
-            begin
-              policy_class_name.constantize
-              # Re-run discovery to register the newly loaded policy
-              discover_and_register
-              result = @policies[resource_class] || find_policy_by_inheritance(resource_class)
-            rescue NameError
-              # Policy class doesn't exist, return nil
-            end
-          end
-
-          result
+        cache_key = Cache.key_for_policy(resource_class)
+        Cache.fetch(cache_key) do
+          @policies[resource_class] ||
+            find_policy_by_inheritance(resource_class) ||
+            try_autoload(resource_class)
         end
       end
 
       def discover_and_register
-        initialize_registry unless @policies
+        @discovered ||= Set.new
 
-        # Track discovered policy classes to avoid redundant ObjectSpace scans
-        @discovered_policy_classes ||= Set.new
+        policy_files.each { |file| load_policy_file(file) }
 
-        # Build absolute paths for policy files
-        base_path = if defined?(Rails) && Rails.respond_to?(:root)
-          Rails.root.to_s
-        else
-          Dir.pwd
-        end
-
-        # Load policy files - in development, Rails autoloading will handle it
-        # but we still need to trigger loading by requiring or constantizing
-        Vauban.config.policy_paths.each do |path_pattern|
-          full_path = File.join(base_path, path_pattern)
-          Dir[full_path].each do |file|
-            # Try to load the file - Rails autoloading will handle it in dev
-            begin
-              require file
-            rescue LoadError
-              # If require fails, try to trigger autoload by constantizing
-              relative_path = file.sub("#{base_path}/", "").sub(".rb", "")
-              class_name = relative_path.split("/").map(&:camelize).join("::")
-              begin
-                class_name.constantize
-              rescue NameError
-                # Ignore if class doesn't exist yet
-              end
-            end
-          end
-        end
-
-        # Auto-register all policies that inherit from Vauban::Policy
-        # Only scan for new policies that haven't been discovered yet
         ObjectSpace.each_object(Class) do |klass|
-          if klass < Policy && klass != Policy && klass.resource_class
-            # Skip if we've already discovered and registered this policy
-            next if @discovered_policy_classes.include?(klass)
+          next unless klass < Policy && klass != Policy && klass.resource_class
+          next if @discovered.include?(klass)
 
-            register(klass) unless @policies[klass.resource_class]
-            @discovered_policy_classes.add(klass)
-          end
+          register(klass) unless @policies[klass.resource_class]
+          @discovered.add(klass)
         end
       end
 
       private
 
       def find_policy_by_inheritance(resource_class)
-        # Try to find policy for parent class
-        return nil unless resource_class && resource_class.respond_to?(:superclass)
+        return nil unless resource_class.respond_to?(:superclass)
 
-        parent_class = resource_class.superclass
-        return nil if parent_class.nil? || parent_class == Object
+        parent = resource_class.superclass
+        return nil if parent.nil? || parent == Object
+        return nil if defined?(ActiveRecord::Base) && parent == ActiveRecord::Base
 
-        # Check for ActiveRecord::Base if ActiveRecord is loaded
-        if defined?(ActiveRecord::Base) && parent_class == ActiveRecord::Base
-          return nil
+        policy_for(parent)
+      end
+
+      def try_autoload(resource_class)
+        return nil unless resource_class.respond_to?(:name) && resource_class.name
+
+        "#{resource_class.name}Policy".constantize
+        discover_and_register
+        @policies[resource_class] || find_policy_by_inheritance(resource_class)
+      rescue NameError
+        nil
+      end
+
+      def policy_files
+        base = defined?(Rails) && Rails.respond_to?(:root) ? Rails.root.to_s : Dir.pwd
+        Vauban.config.policy_paths.flat_map { |pattern| Dir[File.join(base, pattern)] }
+      end
+
+      def load_policy_file(file)
+        require file
+      rescue LoadError
+        base = defined?(Rails) && Rails.respond_to?(:root) ? Rails.root.to_s : Dir.pwd
+        class_name = file.sub("#{base}/", "").sub(".rb", "").split("/").map(&:camelize).join("::")
+        begin
+          class_name.constantize
+        rescue NameError
+          nil
         end
-
-        policy_for(parent_class)
       end
     end
 

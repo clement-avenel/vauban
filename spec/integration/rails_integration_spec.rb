@@ -233,7 +233,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
   describe "API Permissions Controller" do
     before do
       # Ensure API module is loaded
-      require "vauban/api" unless defined?(Vauban::Api)
+      require "vauban/api/permissions_controller" unless defined?(Vauban::Api::PermissionsControllerConcern)
     end
 
     let(:api_controller_class) do
@@ -256,8 +256,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
           @params = value.is_a?(ActionController::Parameters) ? value : ActionController::Parameters.new(value)
         end
       end
-      # Call included directly since PermissionsController uses self.included pattern
-      Vauban::Api::PermissionsController.included(klass)
+      klass.include(Vauban::Api::PermissionsControllerConcern)
       klass
     end
 
@@ -384,7 +383,6 @@ RSpec.describe "Vauban Rails Integration", type: :request do
         expect(error.resource_class).to eq(unregistered_class)
         expect(error.expected_policy_name).to eq("UnregisteredResourcePolicy")
         expect(error.message).to include("UnregisteredResourcePolicy")
-        expect(error.message).to include("app/policies/unregistered_resource_policy.rb")
       end
     end
 

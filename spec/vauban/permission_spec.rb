@@ -198,9 +198,9 @@ RSpec.describe Vauban::Permission do
 
         if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
           expect(Rails.logger).to have_received(:error) do |message|
-            expect(message).to include("Vauban permission evaluation error")
-            expect(message).to include("Permission: :view")
-            expect(message).to include("Rule type: allow")
+            expect(message).to include("Vauban permission error")
+            expect(message).to include(":view")
+            expect(message).to include("allow")
             expect(message).to include("Test error")
           end
         end

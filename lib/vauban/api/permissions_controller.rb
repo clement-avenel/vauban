@@ -2,71 +2,69 @@
 
 module Vauban
   module Api
-    # Base controller for permissions API
-    # This is a template that can be included in your application's API controllers
-    class PermissionsController
-      def self.included(base)
-        base.class_eval do
-          def check
-            resources = parse_resources(params[:resources])
-            permissions = Vauban.batch_permissions(current_user, resources)
+    # Include this concern in your API controller to expose permission endpoints.
+    #
+    #   class Api::PermissionsController < ApplicationController
+    #     include Vauban::Api::PermissionsControllerConcern
+    #   end
+    #
+    # Provides two actions:
+    #   - check:  bulk-check permissions for a list of resources
+    #   - schema: list all registered resource types, permissions, and relationships
+    module PermissionsControllerConcern
+      extend ActiveSupport::Concern
 
-            render json: serialize_permissions(permissions)
-          end
+      def check
+        resources = parse_resources(params[:resources])
+        permissions = Vauban.batch_permissions(current_user, resources)
 
-          def schema
-            render json: {
-              resources: Vauban::Registry.resources.map do |resource_class|
-                policy = Vauban::Registry.policy_for(resource_class)
-                next unless policy
+        render json: serialize_permissions(permissions)
+      end
 
-                {
-                  type: resource_class.name,
-                  permissions: policy.available_permissions.map(&:to_s),
-                  relationships: policy.relationships.keys.map(&:to_s)
-                }
-              end.compact
-            }
-          end
+      def schema
+        render json: {
+          resources: Vauban::Registry.resources.filter_map do |resource_class|
+            policy = Vauban::Registry.policy_for(resource_class)
+            next unless policy
 
-          private
-
-          def parse_resources(resource_params)
-            Array(resource_params).map { |r| find_resource(r) }
-          end
-
-          def find_resource(resource_param)
-            if resource_param.is_a?(String)
-              type, id = resource_param.split(":")
-              type.constantize.find(id)
-            elsif resource_param.is_a?(Hash) || resource_param.respond_to?(:[])
-              # Handle both Hash and ActionController::Parameters
-              type = resource_param[:type] || resource_param["type"]
-              id = resource_param[:id] || resource_param["id"]
-              if type && id
-                type.constantize.find(id)
-              else
-                resource_param
-              end
-            else
-              resource_param
-            end
-          end
-
-          def serialize_permissions(permissions)
             {
-              permissions: permissions.map do |resource, perms|
-                {
-                  resource: {
-                    type: resource.class.name,
-                    id: resource.id
-                  },
-                  permissions: perms
-                }
-              end
+              type: resource_class.name,
+              permissions: policy.available_permissions.map(&:to_s),
+              relationships: policy.relationships.keys.map(&:to_s)
             }
           end
+        }
+      end
+
+      private
+
+      def parse_resources(resource_params)
+        Array(resource_params).map { |r| find_resource(r) }
+      end
+
+      def find_resource(param)
+        case param
+        when String
+          type, id = param.split(":")
+          type.constantize.find(id)
+        when Hash, ActionController::Parameters
+          type = param[:type] || param["type"]
+          id   = param[:id]   || param["id"]
+          type && id ? type.constantize.find(id) : param
+        else
+          param
         end
+      end
+
+      def serialize_permissions(permissions)
+        {
+          permissions: permissions.map do |resource, perms|
+            {
+              resource: { type: resource.class.name, id: resource.id },
+              permissions: perms
+            }
+          end
+        }
       end
     end
   end

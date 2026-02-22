@@ -3,6 +3,21 @@
 require "active_support/core_ext/numeric/time"
 
 module Vauban
+  # Methods extended onto Vauban for configuration (Vauban.configure, Vauban.config).
+  module ConfigurationMethods
+    attr_accessor :configuration
+
+    def configure
+      self.configuration ||= Configuration.new
+      yield(configuration) if block_given?
+      configuration
+    end
+
+    def config
+      self.configuration ||= Configuration.new
+    end
+  end
+
   class Configuration
     attr_accessor :current_user_method
     attr_accessor :cache_store

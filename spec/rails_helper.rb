@@ -94,8 +94,7 @@ require "rspec/rails"
 # as a backup, but coverage for lines 13-14 may need to be verified manually or
 # accepted as a limitation of conditional loading with SimpleCov.
 if defined?(Rails)
-  require "vauban/rails" unless defined?(Vauban::Rails)
-  require "vauban/engine" unless defined?(Vauban::Engine)
+  require "vauban/railtie" unless defined?(Vauban::Railtie)
 end
 
 # Add additional requires below this line. Rails is not loaded until this point!

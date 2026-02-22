@@ -3,7 +3,7 @@
 module Vauban
   class Policy
     class << self
-      attr_accessor :resource_class, :package, :depends_on
+      attr_accessor :resource_class
 
       def resource(klass)
         self.resource_class = klass
@@ -44,53 +44,27 @@ module Vauban
       def scopes
         @scopes ||= {}
       end
+
+      # Thread-safe memoization of policy instances per user.
+      # Uses Concurrent::Map (available in all Rails apps via concurrent-ruby).
+      def instance_for(user)
+        @instances ||= Concurrent::Map.new
+        user_key = Cache.user_key(user)
+        user_instances = @instances.compute_if_absent(user_key) { Concurrent::Map.new }
+        user_instances.compute_if_absent(self) { new(user) }
+      end
+
+      def clear_instance_cache!
+        @instances&.clear
+      end
     end
 
     def initialize(user)
       @user = user
     end
 
-    # Memoize policy instances per user to avoid recreating them
-    # Uses Concurrent::Map if available for better performance, otherwise falls back to Mutex
-    def self.instance_for(user)
-      @instances ||= begin
-        if defined?(Concurrent) && defined?(Concurrent::Map)
-          Concurrent::Map.new
-        else
-          {}
-        end
-      end
-      @instances_mutex ||= Mutex.new unless @instances.is_a?(Concurrent::Map)
-
-      user_key = user_key_for(user)
-
-      if @instances.is_a?(Concurrent::Map)
-        # Use Concurrent::Map - thread-safe without explicit locking
-        user_instances = @instances[user_key] ||= Concurrent::Map.new
-        user_instances[self] ||= new(user)
-      else
-        # Fall back to Mutex-protected Hash
-        @instances_mutex.synchronize do
-          @instances[user_key] ||= {}
-          @instances[user_key][self] ||= new(user)
-        end
-      end
-    end
-
-    def self.clear_instance_cache!
-      if @instances.is_a?(Concurrent::Map)
-        @instances.clear
-      else
-        @instances_mutex ||= Mutex.new
-        @instances_mutex.synchronize do
-          @instances = {}
-        end
-      end
-    end
-
-    # Public method to get all permissions for a resource
     def all_permissions(user, resource, context: {})
-      self.class.permissions.each_with_object({}) do |(action, _permission), result|
+      self.class.permissions.each_with_object({}) do |(action, _), result|
         result[action.to_s] = allowed?(action, resource, user, context: context)
       end
     end
@@ -105,26 +79,9 @@ module Vauban
     def scope(user, action, context: {})
       scope_block = self.class.scopes[action.to_sym]
       return resource_class.all unless scope_block
+      raise ArgumentError, "#{resource_class} must respond to .all for scoping" unless resource_class.respond_to?(:all)
 
-      if resource_class.respond_to?(:all)
-        resource_class.instance_exec(user, context, &scope_block)
-      else
-        raise ArgumentError, <<~ERROR
-          Resource class #{resource_class.name} does not support scoping.
-
-          Scoping requires the resource class to respond to `.all` (e.g., ActiveRecord models).
-
-          To fix this:
-            - If using ActiveRecord: Ensure your model inherits from ApplicationRecord or ActiveRecord::Base
-            - If using a different ORM: Implement a `.all` class method that returns a collection
-            - If scoping isn't needed: Remove the `scope :#{action}` declaration from #{self.class.name}
-
-          Example for ActiveRecord:
-            class #{resource_class.name} < ApplicationRecord
-              # Your model code
-            end
-        ERROR
-      end
+      resource_class.instance_exec(user, context, &scope_block)
     end
 
     def resource_class
@@ -134,21 +91,13 @@ module Vauban
     def evaluate_relationship(name, resource)
       relationship_block = self.class.relationships[name]
       return nil unless relationship_block
-
       resource.instance_eval(&relationship_block)
     end
 
     def evaluate_condition(name, resource, user, context)
       condition_block = self.class.conditions[name]
       return nil unless condition_block
-
       condition_block.call(resource, user, context)
-    end
-
-    private
-
-    def self.user_key_for(user)
-      ResourceIdentifier.user_key_for(user)
     end
   end
 end

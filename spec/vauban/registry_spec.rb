@@ -35,16 +35,6 @@ RSpec.describe Vauban::Registry do
       expect(Vauban::Registry.resources.count(TestResource)).to eq(1)
     end
 
-    it "sets package on policy class" do
-      Vauban::Registry.register(TestResourcePolicy, package: "admin")
-      expect(TestResourcePolicy.package).to eq("admin")
-    end
-
-    it "sets depends_on on policy class" do
-      Vauban::Registry.register(TestResourcePolicy, depends_on: [ "other_package" ])
-      expect(TestResourcePolicy.depends_on).to eq([ "other_package" ])
-    end
-
     it "raises ArgumentError if policy doesn't define resource_class" do
       invalid_policy = Class.new(Vauban::Policy) do
         def self.name
@@ -54,9 +44,8 @@ RSpec.describe Vauban::Registry do
       expect {
         Vauban::Registry.register(invalid_policy)
       }.to raise_error(ArgumentError) do |error|
-        expect(error.message).to include("must define a resource class")
+        expect(error.message).to include("must declare `resource SomeModel`")
         expect(error.message).to include("InvalidPolicy")
-        expect(error.message).to include("resource YourResourceClass")
       end
     end
 
