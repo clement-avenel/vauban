@@ -173,7 +173,6 @@ RSpec.describe Vauban::Registry do
     end
 
     before do
-      Vauban::Registry.reset!
       stub_const("DiscoveredResource", resource_class)
       stub_const("DiscoveredResourcePolicy", policy_class)
     end

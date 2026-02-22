@@ -5,6 +5,15 @@ module Vauban
   module Authorization
     PRELOAD_ASSOCIATION_NAMES = %w[owner user collaborator collaborators team members organization].freeze
 
+    # Authorizes an action or raises {Unauthorized}.
+    #
+    # @param user [Object] the current user
+    # @param action [Symbol] the permission to check (e.g. :view, :edit)
+    # @param resource [Object] the resource being accessed
+    # @param context [Hash] optional context passed to permission rules
+    # @return [true] always returns true on success
+    # @raise [PolicyNotFound] if no policy is registered for the resource class
+    # @raise [Unauthorized] if the user is not allowed to perform the action
     def authorize(user, action, resource, context: {})
       policy_class = Registry.policy_for(resource.class)
       raise PolicyNotFound.new(resource.class, context: context) unless policy_class
@@ -18,6 +27,13 @@ module Vauban
       )
     end
 
+    # Checks whether a user is allowed to perform an action on a resource.
+    #
+    # @param user [Object] the current user
+    # @param action [Symbol] the permission to check
+    # @param resource [Object] the resource being accessed
+    # @param context [Hash] optional context passed to permission rules
+    # @return [Boolean] true if allowed, false otherwise (never raises)
     def can?(user, action, resource, context: {})
       cache_key = Cache.key_for_permission(user, action, resource, context: context)
       Cache.fetch(cache_key) do
@@ -28,6 +44,12 @@ module Vauban
       false
     end
 
+    # Returns a hash of all permission names to their boolean results.
+    #
+    # @param user [Object] the current user
+    # @param resource [Object] the resource to check
+    # @param context [Hash] optional context passed to permission rules
+    # @return [Hash{String => Boolean}] e.g. {"view" => true, "edit" => false}
     def all_permissions(user, resource, context: {})
       cache_key = Cache.key_for_all_permissions(user, resource, context: context)
       Cache.fetch(cache_key) do
@@ -38,6 +60,13 @@ module Vauban
       {}
     end
 
+    # Checks permissions for multiple resources in a single batch.
+    # Automatically uses cache read_multi when available.
+    #
+    # @param user [Object] the current user
+    # @param resources [Array<Object>] resources to check
+    # @param context [Hash] optional context passed to permission rules
+    # @return [Hash{Object => Hash{String => Boolean}}] resource → permissions map
     def batch_permissions(user, resources, context: {})
       return {} if resources.empty?
 
@@ -49,6 +78,15 @@ module Vauban
       cached.merge(compute_uncached_permissions(user, uncached, policy_classes, context))
     end
 
+    # Returns a scoped relation of resources the user can access.
+    #
+    # @param user [Object] the current user
+    # @param action [Symbol] the scope to apply (e.g. :view)
+    # @param resource_class [Class] the ActiveRecord model class
+    # @param context [Hash] optional context passed to the scope block
+    # @return [ActiveRecord::Relation] scoped query
+    # @raise [PolicyNotFound] if no policy is registered for the resource class
+    # @raise [ArgumentError] if the resource class does not respond to .all
     def accessible_by(user, action, resource_class, context: {})
       policy_class = Registry.policy_for(resource_class)
       raise PolicyNotFound.new(resource_class, context: context) unless policy_class
@@ -56,18 +94,32 @@ module Vauban
       policy_class.instance_for(user).scope(action, context: context)
     end
 
+    # Clears all Vauban cache entries.
+    # @return [void]
     def clear_cache!
       Cache.clear
     end
 
+    # Clears cached permissions for a specific resource.
+    # Useful after the resource is updated.
+    #
+    # @param resource [Object] the resource whose cache to clear
+    # @return [void]
     def clear_cache_for_resource!(resource)
       Cache.clear_for_resource(resource)
     end
 
+    # Clears cached permissions for a specific user.
+    # Useful after the user's roles or relationships change.
+    #
+    # @param user [Object] the user whose cache to clear
+    # @return [void]
     def clear_cache_for_user!(user)
       Cache.clear_for_user(user)
     end
 
+    # Clears memoized policy instances for all users.
+    # @return [void]
     def clear_policy_instance_cache!
       Policy.clear_instance_cache!
     end

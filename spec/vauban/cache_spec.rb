@@ -10,15 +10,10 @@ RSpec.describe Vauban::Cache do
 
   before do
     stub_const("Document", document_class)
-    described_class.clear_key_cache!
     Vauban.configure do |config|
       config.cache_store = cache_store
       config.cache_ttl = 3600
     end
-  end
-
-  after do
-    Vauban.configuration = nil
   end
 
   # --- Key building ---
@@ -61,7 +56,7 @@ RSpec.describe Vauban::Cache do
     it "hashes complex context" do
       ctx = { project: 1, team: "eng", role: "admin", extra: "data" }
       key = described_class.key_for_permission(user, :view, resource, context: ctx)
-      expect(key).to match(/[a-f0-9]{32}/)
+      expect(key).to match(/[a-f0-9]{64}/)
     end
 
     it "handles resources without id" do

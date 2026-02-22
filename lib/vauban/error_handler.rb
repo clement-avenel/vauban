@@ -2,11 +2,14 @@
 
 module Vauban
   # Formats error/log messages and handles errors consistently across Vauban.
-  # Public: display_name, handle_*_error. All fail-safe (never raise).
+  # All handler methods are fail-safe (never raise).
   module ErrorHandler
     module_function
 
     # Human-readable name for any object: "nil", "User#123", "Document".
+    #
+    # @param obj [Object, nil]
+    # @return [String]
     def display_name(obj)
       return "nil" if obj.nil?
       name = obj.is_a?(Class) ? obj.name : obj.class.name
@@ -14,21 +17,46 @@ module Vauban
       name
     end
 
+    # Logs an authorization error and returns false.
+    #
+    # @param error [StandardError]
+    # @param context [Hash]
+    # @return [false]
     def handle_authorization_error(error, context: {})
       log(error, level: :error, context: context)
       false
     end
 
+    # Logs a non-critical error as a warning, then runs the fallback block.
+    #
+    # @param error [StandardError]
+    # @param operation [String] label for the failed operation
+    # @param context [Hash]
+    # @yield optional fallback
+    # @return [Object, nil] the fallback result, or nil
     def handle_non_critical_error(error, operation:, context: {}, &block)
       log(error, level: :warn, label: operation, context: context)
       block&.call
     end
 
+    # Logs a cache error, then runs the fallback block.
+    #
+    # @param error [StandardError]
+    # @param key [String] the cache key involved
+    # @yield optional fallback
+    # @return [Object, nil] the fallback result, or nil
     def handle_cache_error(error, key:, &block)
       log(error, level: :error, label: "cache key '#{key}'")
       block&.call
     end
 
+    # Logs a permission rule evaluation error and returns false.
+    #
+    # @param error [StandardError]
+    # @param permission [Symbol]
+    # @param rule_type [Symbol] :allow or :deny
+    # @param context [Hash]
+    # @return [false]
     def handle_permission_error(error, permission:, rule_type:, context: {})
       return false unless should_log?
 

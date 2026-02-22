@@ -4,6 +4,9 @@ require "rails_helper"
 
 RSpec.describe "Vauban Rails Integration", type: :request do
   before do
+    Vauban.configure do |config|
+      config.cache_store = ::Rails.cache
+    end
     DummyAppSetup.setup_all
   end
 

@@ -2,9 +2,9 @@
 
 **Relationship-based authorization for Rails**
 
-Vauban is a Rails-first authorization gem that uses Relationship-Based Access Control (ReBAC) with a readable DSL, comprehensive tooling, and frontend API support.
+Vauban is a Rails-first authorization gem that uses Relationship-Based Access Control (ReBAC) with a readable DSL, built-in caching, and batch operations.
 
-Named after [Sébastien Le Prestre de Vauban](https://en.wikipedia.org/wiki/S%C3%A9bastien_Le_Prestre_de_Vauban), the master builder of citadels and fortifications, Vauban provides robust authorization defenses for your Rails application.
+Named after [Sébastien Le Prestre de Vauban](https://en.wikipedia.org/wiki/Sébastien_Le_Prestre_de_Vauban), the master builder of citadels and fortifications, Vauban provides robust authorization defenses for your Rails application.
 
 > 📚 **New to ReBAC?** Check out [CONCEPTS.md](./CONCEPTS.md) for a deep dive into Relationship-Based Access Control, why it matters, and how Vauban implements it.
 > 
@@ -12,12 +12,10 @@ Named after [Sébastien Le Prestre de Vauban](https://en.wikipedia.org/wiki/S%C3
 
 ## Features
 
-- 🔗 **Relationship-Based**: Model authorization through relationships, not just roles
-- 📝 **Readable DSL**: Policies that are easy to understand and maintain
-- 🎯 **Package-Aware**: Built for modular monoliths with Packwerk
-- 🚀 **Frontend API**: Efficient permission checking for frontend applications
-- ⚡ **Performance**: Built-in caching and batch operations
-- 🧪 **Tooling**: Testing framework, visualization, and exploration tools
+- **Relationship-Based**: Model authorization through relationships, not just roles
+- **Readable DSL**: Policies that are easy to understand and maintain
+- **Performance**: Built-in caching and batch operations
+- **Rails Integration**: Controller helpers, view helpers, generators, and Railtie auto-configuration
 
 ## Installation
 
@@ -33,18 +31,17 @@ And then execute:
 $ bundle install
 ```
 
-## Showcase
-
-Want to see Vauban in action? Check out the **included dummy app** at `spec/dummy/`:
+Run the install generator to create an initializer and example policy:
 
 ```bash
-cd spec/dummy
-bundle install
-rails db:create db:migrate db:seed
-rails server
+$ rails generate vauban:install
 ```
 
-See real examples of policies, models, and authorization in action!
+Or generate a policy for a specific model:
+
+```bash
+$ rails generate vauban:policy Article
+```
 
 ## Quick Start
 
@@ -63,42 +60,24 @@ class DocumentPolicy < Vauban::Policy
 
   permission :edit do
     allow_if { |doc, user| doc.owner == user }
-    allow_if { |doc, user| 
-      doc.collaborators.include?(user) && 
+    allow_if { |doc, user|
+      doc.collaborators.include?(user) &&
       doc.collaboration_permissions(user).include?(:edit)
     }
   end
 
   permission :delete do
-    allow_if { |doc, user| doc.owner == user && !doc.archived? }
+    deny_if { |doc| doc.archived? }
+    allow_if { |doc, user| doc.owner == user }
   end
 
-  # Optional: Define relationships for reusable relationship logic
-  relationship :owner do
-    owner
-  end
-
-  relationship :collaborator? do |user|
-    collaborators.include?(user)
-  end
-end
-```
-
-**Using Relationships in Permissions:**
-
-You can use the `evaluate_relationship` method in your permission blocks:
-
-```ruby
-class DocumentPolicy < Vauban::Policy
-  resource Document
-
-  relationship :owner do
-    owner
-  end
-
-  permission :view do
-    allow_if { |doc, user| evaluate_relationship(:owner, doc) == user }
-    allow_if { |doc, user| doc.public? }
+  # Optional: Define scopes for efficient queries
+  scope :view do |user, context|
+    Document.left_joins(:document_collaborations)
+      .where(public: true)
+      .or(Document.left_joins(:document_collaborations).where(owner: user))
+      .or(Document.left_joins(:document_collaborations).where(document_collaborations: { user_id: user.id }))
+      .distinct
   end
 end
 ```
@@ -107,8 +86,6 @@ end
 
 ```ruby
 class DocumentsController < ApplicationController
-  include Vauban::Rails::ControllerHelpers
-  
   def show
     @document = Document.find(params[:id])
     authorize! :view, @document
@@ -119,8 +96,14 @@ class DocumentsController < ApplicationController
     authorize! :edit, @document
     # ... update logic
   end
+
+  def index
+    @documents = Vauban.accessible_by(current_user, :view, Document)
+  end
 end
 ```
+
+Controller helpers (`authorize!`, `can?`, `cannot?`) are automatically included via the Railtie.
 
 ### 3. Use in Views
 
@@ -134,27 +117,13 @@ end
 <% end %>
 ```
 
-## Frontend API
+### 4. Batch Permission Checks
 
-### Permission Check Endpoint
+When you need permissions for multiple resources (e.g., rendering a list), use batch operations to avoid N+1 permission checks:
 
 ```ruby
-# app/controllers/api/v1/permissions_controller.rb
-class Api::V1::PermissionsController < Api::BaseController
-  def check
-    resources = params[:resources].map { |r| find_resource(r) }
-    permissions = Vauban.batch_permissions(current_user, resources)
-
-    render json: {
-      permissions: permissions.map do |resource, perms|
-        {
-          resource: { type: resource.class.name, id: resource.id },
-          permissions: perms
-        }
-      end
-    }
-  end
-end
+permissions = Vauban.batch_permissions(current_user, @documents)
+# => { #<Document id:1> => {"view" => true, "edit" => true, "delete" => false}, ... }
 ```
 
 ## Configuration
@@ -162,68 +131,81 @@ end
 ```ruby
 # config/initializers/vauban.rb
 Vauban.configure do |config|
-  config.current_user_method = :current_user
-  config.cache_store = Rails.cache  # Enable caching (default: nil, disabled)
-  config.cache_ttl = 1.hour         # Cache TTL for permission checks (default: 1.hour)
-  config.frontend_api_enabled = true
-  config.frontend_cache_ttl = 5.minutes
+  config.current_user_method = :current_user  # Method name on controllers (default: :current_user)
+  config.cache_store = Rails.cache             # Set by Railtie automatically (default: Rails.cache)
+  config.cache_ttl = 3600                      # Cache TTL in seconds (default: 3600)
+  config.policy_paths = [                      # Where to discover policies (default shown)
+    "app/policies/**/*_policy.rb",
+    "packs/*/app/policies/**/*_policy.rb"
+  ]
 end
 ```
 
 ### Caching
 
-Vauban includes built-in caching for permission checks to improve performance:
+Vauban includes built-in caching for permission checks:
 
 - **Permission checks** (`Vauban.can?`) are cached by user, action, resource, and context
 - **Policy lookups** (`Registry.policy_for`) are cached by resource class
 - **Batch operations** automatically benefit from caching
 
-Cache keys include user ID, action, resource class/ID, and context hash, ensuring accurate cache invalidation.
-
-**Cache Management:**
-
 ```ruby
 # Clear all cached permissions
 Vauban.clear_cache!
 
-# Clear cache for a specific resource (useful when resource is updated)
+# Clear cache for a specific resource (e.g., after update)
 Vauban.clear_cache_for_resource!(document)
 
-# Clear cache for a specific user (useful when user permissions change)
+# Clear cache for a specific user (e.g., after role change)
 Vauban.clear_cache_for_user!(user)
 ```
 
-**Disable Caching:**
+To disable caching:
 
 ```ruby
 Vauban.configure do |config|
-  config.cache_store = nil  # Disable caching
+  config.cache_store = nil
 end
 ```
+
+## API
+
+### Core Methods
+
+| Method | Description |
+|--------|-------------|
+| `Vauban.can?(user, action, resource, context: {})` | Returns `true`/`false` |
+| `Vauban.authorize(user, action, resource, context: {})` | Returns `true` or raises `Vauban::Unauthorized` |
+| `Vauban.all_permissions(user, resource, context: {})` | Returns `{"view" => true, "edit" => false, ...}` |
+| `Vauban.batch_permissions(user, resources, context: {})` | Returns `{resource => permissions_hash, ...}` |
+| `Vauban.accessible_by(user, action, resource_class, context: {})` | Returns scoped ActiveRecord relation |
+
+### Policy DSL
+
+| Method | Description |
+|--------|-------------|
+| `resource Klass` | Declares which model this policy governs |
+| `permission :name { ... }` | Defines a permission with allow/deny rules |
+| `allow_if { \|resource, user, context\| ... }` | Grants access if block returns truthy |
+| `deny_if { \|resource, user, context\| ... }` | Denies access if block returns truthy (checked before allow rules) |
+| `scope :action { \|user, context\| ... }` | Defines a scope for `accessible_by` queries |
+| `relationship :name { ... }` | Defines a reusable relationship block |
+| `condition :name { \|resource, user, context\| ... }` | Defines a reusable condition block |
 
 ## Development
 
 ### Requirements
 
-- Ruby >= 3.0.0, < 4.1 (Ruby 4.0+ may have compatibility issues with Rails 8.1)
+- Ruby >= 3.0.0
 - Rails >= 6.0
 
 ### Setup
-
-After checking out the repo, run:
 
 ```bash
 bundle install
 ```
 
 ### Testing
-
-Vauban uses RSpec for testing. There are two types of tests:
-
-1. **Unit tests** - Test core functionality without Rails
-2. **Integration tests** - Test Rails integration with a dummy app
-
-#### Running Tests
 
 ```bash
 # Run all tests
@@ -236,13 +218,9 @@ bundle exec rspec spec/vauban/
 bundle exec rspec spec/integration/
 ```
 
-#### Using the Dummy App
+### Dummy App
 
-The dummy Rails app (`spec/dummy/`) is **included in the repo** as both:
-- **Showcase**: See real examples of Vauban in action
-- **Testing**: Used for integration tests
-
-To use it:
+The dummy Rails app (`spec/dummy/`) serves as both a showcase and integration test harness:
 
 ```bash
 cd spec/dummy
@@ -251,96 +229,35 @@ rails db:create db:migrate db:seed
 rails server
 ```
 
-The dummy app includes:
-- Example models (`User`, `Document`, `DocumentCollaboration`)
-- Complete policy example (`DocumentPolicy`)
-- All configured and ready to explore
+### Pre-commit Hooks
 
-See `spec/dummy/README.md` for more details.
+```bash
+chmod +x bin/install-pre-commit
+./bin/install-pre-commit
+```
 
 ## Documentation
 
-- **[CONCEPTS.md](./CONCEPTS.md)** - Deep dive into ReBAC, authorization paradigms, and Vauban's design philosophy
-- **[MIGRATION.md](./MIGRATION.md)** - Migration guides from CanCanCan and Pundit to Vauban
+- **[CONCEPTS.md](./CONCEPTS.md)** - Deep dive into ReBAC and Vauban's design philosophy
+- **[MIGRATION.md](./MIGRATION.md)** - Migration guides from CanCanCan and Pundit
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and implementation details
 - **[EXAMPLES.md](./EXAMPLES.md)** - Comprehensive code examples and use cases
 - **[TESTING.md](./TESTING.md)** - Testing guide and best practices
 
-## Roadmap / Future Improvements
-
-This is an active project with planned improvements:
-
-### High Priority
-- [x] **Caching Implementation**: Implement caching for permission checks
-  - ✅ Cache `Vauban.can?` results
-  - ✅ Cache `Registry.policy_for` lookups
-  - ✅ Optimize batch operations
-- [x] **Better Error Messages**: More descriptive errors with helpful suggestions
-  - ✅ Enhanced `PolicyNotFound` with expected policy class name, file location, and code examples
-  - ✅ Enhanced `Unauthorized` with user info, available permissions, and debugging suggestions
-  - ✅ Improved permission evaluation error logging with detailed context (permission, rule type, resource, user, backtrace)
-  - ✅ Enhanced `ArgumentError` messages in Registry and Policy with actionable fixes
-- [x] **Performance Optimizations**: 
-  - ✅ Prevent N+1 queries in batch permission checks (automatic association preloading)
-  - ✅ Improve lazy loading (track discovered policies to avoid redundant scans)
-  - ✅ Add memoization for policy instances (per-user policy instance caching)
+## Roadmap
 
 ### Medium Priority
-- [ ] **Developer Experience**: 
-  - Debug mode with detailed logging
-  - Policy validation (warn on common mistakes)
-  - Enhanced generator templates
-- [ ] **Documentation**: 
-  - API documentation (YARD/RDoc)
-  - Performance benchmarks
-  - Migration checklist
-- [ ] **Testing Utilities**: 
-  - RSpec matchers (`expect(user).to be_able_to(:edit, document)`)
-  - Test helpers for common scenarios
-- [ ] **CI/CD Setup**: 
-  - GitHub Actions workflow
-  - Test against multiple Rails versions
+- **Developer Experience**: Debug mode with detailed logging, policy validation
+- **Testing Utilities**: RSpec matchers (`expect(user).to be_able_to(:edit, document)`)
+- **Documentation**: YARD API docs, performance benchmarks
 
 ### Nice to Have
-- [ ] **Advanced Features**: 
-  - Permission inheritance/composition
-  - Conditional permissions based on resource state
-  - Time-based permissions
-- [ ] **Monitoring**: 
-  - Metrics (permission check counts, cache hit rates)
-  - Performance profiling hooks
-- [ ] **Code Quality**: 
-  - Security audit (bundler-audit)
-
-## Development
-
-### Pre-commit Hooks
-
-To ensure code quality, you can install pre-commit hooks that run RuboCop and unit tests before each commit:
-
-```bash
-# Install the pre-commit hook (make sure the script is executable first)
-chmod +x bin/install-pre-commit
-./bin/install-pre-commit
-
-# Or manually:
-cp bin/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
-
-The hook will:
-- Run RuboCop to check code style
-- Run unit tests (`spec/vauban/`)
-- Optionally run integration tests (commented out by default for speed)
-
-To skip the hook for a single commit (not recommended):
-```bash
-git commit --no-verify
-```
+- **Advanced Features**: Permission inheritance/composition, time-based permissions
+- **Monitoring**: Metrics (permission check counts, cache hit rates)
 
 ## Contributing
 
-Bug reports and pull requests are welcome! Please check the [roadmap](#roadmap--future-improvements) above for areas where contributions would be especially valuable.
+Bug reports and pull requests are welcome on [GitHub](https://github.com/clement-avenel/vauban).
 
 ## License
 

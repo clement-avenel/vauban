@@ -1,13 +1,22 @@
 # frozen_string_literal: true
 
-require "digest"
+require "digest/sha2"
 
 module Vauban
+  # Cache layer for permission checks and policy lookups.
+  # Handles key generation, memoization, and store operations.
   module Cache
     module_function
 
     # --- Key building ---
 
+    # Builds a cache key for a single permission check.
+    #
+    # @param user [Object]
+    # @param action [Symbol, String]
+    # @param resource [Object]
+    # @param context [Hash]
+    # @return [String] cache key
     def key_for_permission(user, action, resource, context: {})
       if simple_case?(user, resource, context)
         tuple = [ :permission, user.id, action.to_s, resource.class.name, resource.id ]
@@ -17,6 +26,12 @@ module Vauban
       end
     end
 
+    # Builds a cache key for an all-permissions check.
+    #
+    # @param user [Object]
+    # @param resource [Object]
+    # @param context [Hash]
+    # @return [String] cache key
     def key_for_all_permissions(user, resource, context: {})
       if simple_case?(user, resource, context)
         tuple = [ :all_permissions, user.id, resource.class.name, resource.id ]
@@ -26,15 +41,27 @@ module Vauban
       end
     end
 
+    # Builds a cache key for a policy class lookup.
+    #
+    # @param resource_class [Class]
+    # @return [String] cache key
     def key_for_policy(resource_class)
       "vauban:policy:#{resource_class.respond_to?(:name) ? resource_class.name : resource_class}"
     end
 
+    # Returns a stable string key for the given user.
+    #
+    # @param user [Object, nil]
+    # @return [String]
     def user_key(user)
       return "user:nil" if user.nil?
       "user:#{id_of(user)}"
     end
 
+    # Returns a stable string key for the given resource.
+    #
+    # @param resource [Object, nil]
+    # @return [String]
     def resource_key(resource)
       return "nil" if resource.nil?
       return "class:#{resource.name}" if resource.is_a?(Class)
@@ -43,6 +70,12 @@ module Vauban
 
     # --- Store operations ---
 
+    # Fetches a value from the cache store, falling back to the block on miss.
+    #
+    # @param key [String] cache key
+    # @param ttl [Integer, nil] override TTL in seconds
+    # @yield block to compute the value on cache miss
+    # @return [Object] cached or computed value
     def fetch(key, ttl: nil, &block)
       return yield unless cache_enabled?
 
@@ -51,6 +84,10 @@ module Vauban
       ErrorHandler.handle_cache_error(e, key: key, &block)
     end
 
+    # Deletes a single cache entry.
+    #
+    # @param key [String] cache key
+    # @return [void]
     def delete(key)
       return unless cache_enabled?
       cache_store.delete(key)
@@ -58,20 +95,32 @@ module Vauban
       ErrorHandler.handle_cache_error(e, key: key)
     end
 
+    # Clears all Vauban cache entries.
+    # @return [void]
     def clear
       clear_by_pattern("vauban:*", label: "clear")
     end
 
+    # Clears cache entries related to a specific resource.
+    #
+    # @param resource [Object]
+    # @return [void]
     def clear_for_resource(resource)
       return unless cache_enabled?
       clear_by_pattern("vauban:*:*:#{resource_key(resource)}:*", label: "clear_for_resource")
     end
 
+    # Clears cache entries related to a specific user.
+    #
+    # @param user [Object]
+    # @return [void]
     def clear_for_user(user)
       return unless cache_enabled?
       clear_by_pattern("vauban:*:#{user_key(user)}:*", label: "clear_for_user")
     end
 
+    # Clears the in-process key memoization cache.
+    # @return [void]
     def clear_key_cache!
       KEY_CACHE_MUTEX.synchronize { @key_cache = {} }
     end
@@ -98,7 +147,7 @@ module Vauban
       if context.size <= 3 && context.values.all? { |v| v.is_a?(String) || v.is_a?(Numeric) || v.is_a?(TrueClass) || v.is_a?(FalseClass) || v.nil? }
         "ctx:#{context.sort.map { |k, v| "#{k}=#{v}" }.join(",")}"
       else
-        Digest::MD5.hexdigest(context.sort.to_h.to_json)
+        Digest::SHA256.hexdigest(context.sort.to_h.to_json)
       end
     end
 

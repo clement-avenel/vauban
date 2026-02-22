@@ -27,7 +27,7 @@ class DocumentPolicy < Vauban::Policy
   end
 
   # Optional: Define scopes for efficient queries
-  scope :view do |user|
+  scope :view do |user, _context|
     Document.left_joins(:document_collaborations)
       .where(
         "documents.public = ? OR documents.owner_id = ? OR document_collaborations.user_id = ?",

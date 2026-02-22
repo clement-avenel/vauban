@@ -4,10 +4,22 @@ module Vauban
   module Rails
     # Shared can?/cannot? used by both controllers and views.
     module AuthorizationHelpers
+      # Checks whether the current user can perform an action.
+      #
+      # @param action [Symbol] the permission to check
+      # @param resource [Object] the resource being accessed
+      # @param context [Hash] optional context
+      # @return [Boolean]
       def can?(action, resource, context: {})
         Vauban.can?(send(Vauban.config.current_user_method), action, resource, context: context)
       end
 
+      # Inverse of {#can?}.
+      #
+      # @param action [Symbol]
+      # @param resource [Object]
+      # @param context [Hash]
+      # @return [Boolean]
       def cannot?(action, resource, context: {})
         !can?(action, resource, context: context)
       end
@@ -22,6 +34,13 @@ module Vauban
         helper_method :can?, :cannot?
       end
 
+      # Authorizes an action or raises {Vauban::Unauthorized}.
+      #
+      # @param action [Symbol]
+      # @param resource [Object]
+      # @param context [Hash]
+      # @return [true]
+      # @raise [Vauban::Unauthorized]
       def authorize!(action, resource, context: {})
         Vauban.authorize(send(Vauban.config.current_user_method), action, resource, context: context)
       end

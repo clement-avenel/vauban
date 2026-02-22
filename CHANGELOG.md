@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release
-- Core policy system
+- Core policy system with readable DSL (allow_if / deny_if)
 - Relationship-based authorization
-- Rails integration (controllers and views)
-- Policy registry
-- Basic permission checking
-- Frontend API support structure
+- Rails integration (controllers, views, Railtie, generators)
+- Policy registry with auto-discovery and inheritance
+- Built-in caching and batch permission checks
+- Scope support for `accessible_by` queries

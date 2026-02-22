@@ -14,4 +14,8 @@ class <%= class_name %>Policy < Vauban::Policy
   permission :delete do
     allow_if { |<%= file_name %>, user| <%= file_name %>.owner == user }
   end
+
+  # scope :view do |user, _context|
+  #   <%= resource_class_name %>.where(owner: user)
+  # end
 end

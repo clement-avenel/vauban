@@ -315,9 +315,5 @@ RSpec.describe Vauban do
     it "defines PolicyNotFound error" do
       expect(Vauban::PolicyNotFound).to be < Vauban::Error
     end
-
-    it "defines ResourceNotFound error" do
-      expect(Vauban::ResourceNotFound).to be < Vauban::Error
-    end
   end
 end

@@ -107,9 +107,6 @@ RSpec.describe "Vauban.batch_permissions" do
       end
     end
 
-    after do
-      Vauban.configuration = nil
-    end
 
     it "uses cached results when available" do
       cache_key1 = Vauban::Cache.key_for_all_permissions(user, resource1)

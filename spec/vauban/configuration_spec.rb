@@ -53,10 +53,6 @@ RSpec.describe Vauban::Configuration do
   end
 
   describe "integration with Vauban.configure" do
-    after do
-      Vauban.configuration = nil
-    end
-
     it "can be configured via Vauban.configure" do
       Vauban.configure do |config|
         config.current_user_method = :authenticated_user

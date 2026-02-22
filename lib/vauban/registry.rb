@@ -1,23 +1,36 @@
 # frozen_string_literal: true
 
 module Vauban
+  # Stores and discovers policy-to-resource mappings.
+  # Supports manual registration, auto-discovery via ObjectSpace, and inheritance lookup.
   module Registry
     module_function
 
+    # Returns a frozen copy of all registered policies.
+    # @return [Hash{Class => Class}] resource class → policy class
     def policies
       policies_store.dup.freeze
     end
 
+    # Returns a frozen copy of all registered resource classes.
+    # @return [Array<Class>]
     def resources
       resources_store.dup.freeze
     end
 
+    # Clears all registrations and discovered state.
+    # @return [void]
     def reset!
       @policies = {}
       @resources = []
       @discovered = nil
     end
 
+    # Registers a policy class for its declared resource class.
+    #
+    # @param policy_class [Class] a subclass of {Policy} with a declared resource
+    # @return [Class] the registered policy class
+    # @raise [ArgumentError] if the policy doesn't declare a resource
     def register(policy_class)
       resource_class = policy_class.resource_class
       raise ArgumentError, "Policy #{policy_class.name} must declare `resource SomeModel`" unless resource_class
@@ -27,6 +40,11 @@ module Vauban
       policy_class
     end
 
+    # Looks up the policy for a resource class. Checks direct registration,
+    # inheritance chain, and attempts autoloading by convention.
+    #
+    # @param resource_class [Class, nil]
+    # @return [Class, nil] the policy class, or nil if not found
     def policy_for(resource_class)
       return nil unless resource_class
 
@@ -38,6 +56,8 @@ module Vauban
       end
     end
 
+    # Scans policy_paths and ObjectSpace to discover and register all policies.
+    # @return [void]
     def discover_and_register
       @discovered ||= {}
 

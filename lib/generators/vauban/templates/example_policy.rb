@@ -18,7 +18,8 @@ class DocumentPolicy < Vauban::Policy
   end
 
   permission :delete do
-    allow_if { |doc, user| doc.owner == user && !doc.archived? }
+    deny_if { |doc| doc.archived? }
+    allow_if { |doc, user| doc.owner == user }
   end
 
   # Optional: Define relationships for reusable relationship logic
@@ -26,12 +27,9 @@ class DocumentPolicy < Vauban::Policy
     owner
   end
 
-  relationship :collaborator? do |user|
-    collaborators.include?(user)
-  end
-
   # Optional: Define scopes for efficient queries
-  scope :view do |user|
+  # Scope blocks receive (user, context) and run in the resource class context.
+  scope :view do |user, _context|
     Document.left_joins(:document_collaborations)
       .where(public: true)
       .or(Document.left_joins(:document_collaborations).where(owner: user))

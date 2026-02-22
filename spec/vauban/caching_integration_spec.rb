@@ -29,10 +29,6 @@ RSpec.describe "Vauban caching integration" do
     end
   end
 
-  after do
-    Vauban.configuration = nil
-    Vauban::Registry.reset!
-  end
 
   describe "Vauban.can?" do
     it "caches permission check results" do
