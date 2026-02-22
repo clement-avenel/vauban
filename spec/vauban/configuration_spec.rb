@@ -19,11 +19,6 @@ RSpec.describe Vauban::Configuration do
       expect(config.cache_ttl).to eq(1.hour)
     end
 
-    it "sets default audit_logger to nil" do
-      config = Vauban::Configuration.new
-      expect(config.audit_logger).to be_nil
-    end
-
     it "sets default frontend_api_enabled to true" do
       config = Vauban::Configuration.new
       expect(config.frontend_api_enabled).to be true
@@ -58,12 +53,6 @@ RSpec.describe Vauban::Configuration do
     it "allows setting cache_ttl" do
       config.cache_ttl = 30.minutes
       expect(config.cache_ttl).to eq(30.minutes)
-    end
-
-    it "allows setting audit_logger" do
-      logger = double("Logger")
-      config.audit_logger = logger
-      expect(config.audit_logger).to eq(logger)
     end
 
     it "allows setting frontend_api_enabled" do

@@ -44,52 +44,22 @@ module Vauban
         ErrorHandler.handle_cache_error(e, key: key)
       end
 
-      # Clear all Vauban cache entries
       def clear
-        return unless cache_enabled?
-
-        if cache_store.respond_to?(:delete_matched)
-          cache_store.delete_matched("vauban:*")
-        else
-          # For caches that don't support pattern matching, we can't clear selectively
-          # Log a warning
-          if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-            Rails.logger.warn("Vauban: Cache store doesn't support delete_matched. Cannot clear Vauban cache.")
-          end
-        end
-      rescue StandardError => e
-        # Log error but don't fail - cache clearing is non-critical
-        ErrorHandler.handle_cache_error(e, key: "clear")
+        clear_by_pattern("vauban:*", key_for_log: "clear")
       end
 
-      # Clear cache for a specific resource (useful when resource is updated)
       def clear_for_resource(resource)
         return unless cache_enabled?
 
-        resource_key = ResourceIdentifier.resource_key_for(resource)
-        pattern = "vauban:*:*:#{resource_key}:*"
-
-        if cache_store.respond_to?(:delete_matched)
-          cache_store.delete_matched(pattern)
-        end
-      rescue StandardError => e
-        # Log error but don't fail - cache clearing is non-critical
-        ErrorHandler.handle_cache_error(e, key: "clear_for_resource")
+        pattern = "vauban:*:*:#{ResourceIdentifier.resource_key_for(resource)}:*"
+        clear_by_pattern(pattern, key_for_log: "clear_for_resource")
       end
 
-      # Clear cache for a specific user (useful when user permissions change)
       def clear_for_user(user)
         return unless cache_enabled?
 
-        user_id = ResourceIdentifier.user_id_for(user)
-        pattern = "vauban:*:#{user_id}:*"
-
-        if cache_store.respond_to?(:delete_matched)
-          cache_store.delete_matched(pattern)
-        end
-      rescue StandardError => e
-        # Log error but don't fail - cache clearing is non-critical
-        ErrorHandler.handle_cache_error(e, key: "clear_for_user")
+        pattern = "vauban:*:#{ResourceIdentifier.user_id_for(user)}:*"
+        clear_by_pattern(pattern, key_for_log: "clear_for_user")
       end
 
       # Clear memoized cache keys (useful for testing)
@@ -99,8 +69,20 @@ module Vauban
 
       private
 
+      def clear_by_pattern(pattern, key_for_log:)
+        return unless cache_enabled?
+
+        if cache_store.respond_to?(:delete_matched)
+          cache_store.delete_matched(pattern)
+        elsif defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+          Rails.logger.warn("Vauban: Cache store doesn't support delete_matched. Clear (#{key_for_log}) had no effect.")
+        end
+      rescue StandardError => e
+        ErrorHandler.handle_cache_error(e, key: key_for_log)
+      end
+
       def cache_enabled?
-        cache_store && !cache_store.nil?
+        !cache_store.nil?
       end
 
       def cache_store

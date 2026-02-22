@@ -7,59 +7,22 @@ module Vauban
   # Handles memoization for common cases to improve performance
   class CacheKeyBuilder
     class << self
-      # Generate cache key for a permission check
-      # Memoizes keys for common cases (simple resources with IDs, no context)
-      #
-      # @param user [Object] The user object
-      # @param action [Symbol, String] The action being checked
-      # @param resource [Object] The resource being checked
-      # @param context [Hash] Optional context hash
-      # @return [String] Cache key string
       def key_for_permission(user, action, resource, context: {})
-        # Memoize for simple cases to avoid repeated string operations
         if simple_case?(user, resource, context)
-          cache_key_tuple = [ :permission, user.id, action.to_s, resource.class.name, resource.id ]
-          memoized_key = memoized_cache_key(cache_key_tuple)
-          return memoized_key if memoized_key
+          tuple = [ :permission, user.id, action.to_s, resource.class.name, resource.id ]
+          get_or_set_memo(tuple) { build_permission_key(user, action, resource, context) }
+        else
+          build_permission_key(user, action, resource, context)
         end
-
-        # Generate normally for complex cases
-        key = build_permission_key(user, action, resource, context)
-
-        # Memoize if it was a simple case
-        if simple_case?(user, resource, context)
-          cache_key_tuple = [ :permission, user.id, action.to_s, resource.class.name, resource.id ]
-          memoize_cache_key(cache_key_tuple, key)
-        end
-
-        key
       end
 
-      # Generate cache key for all permissions on a resource
-      # Memoizes keys for common cases (simple resources with IDs, no context)
-      #
-      # @param user [Object] The user object
-      # @param resource [Object] The resource being checked
-      # @param context [Hash] Optional context hash
-      # @return [String] Cache key string
       def key_for_all_permissions(user, resource, context: {})
-        # Memoize for simple cases to avoid repeated string operations
         if simple_case?(user, resource, context)
-          cache_key_tuple = [ :all_permissions, user.id, resource.class.name, resource.id ]
-          memoized_key = memoized_cache_key(cache_key_tuple)
-          return memoized_key if memoized_key
+          tuple = [ :all_permissions, user.id, resource.class.name, resource.id ]
+          get_or_set_memo(tuple) { build_all_permissions_key(user, resource, context) }
+        else
+          build_all_permissions_key(user, resource, context)
         end
-
-        # Generate normally for complex cases
-        key = build_all_permissions_key(user, resource, context)
-
-        # Memoize if it was a simple case
-        if simple_case?(user, resource, context)
-          cache_key_tuple = [ :all_permissions, user.id, resource.class.name, resource.id ]
-          memoize_cache_key(cache_key_tuple, key)
-        end
-
-        key
       end
 
       # Generate cache key for policy lookup
@@ -71,15 +34,22 @@ module Vauban
         "vauban:policy:#{class_name}"
       end
 
-      # Clear memoized cache keys (useful for testing)
       def clear_key_cache!
-        @key_cache_mutex ||= Mutex.new
-        @key_cache_mutex.synchronize do
-          @key_cache = {}
-        end
+        key_cache_mutex.synchronize { @key_cache = {} }
       end
 
       private
+
+      def get_or_set_memo(tuple, &block)
+        key_cache_mutex.synchronize do
+          return @key_cache[tuple] if @key_cache&.key?(tuple)
+
+          key = yield
+          @key_cache ||= {}
+          @key_cache[tuple] = key.freeze
+          key
+        end
+      end
 
       def simple_case?(user, resource, context)
         context.empty? &&
@@ -87,6 +57,10 @@ module Vauban
           resource.id &&
           user&.respond_to?(:id) &&
           user.id
+      end
+
+      def key_cache_mutex
+        @key_cache_mutex ||= Mutex.new
       end
 
       def build_permission_key(user, action, resource, context)
@@ -124,23 +98,6 @@ module Vauban
           value.is_a?(TrueClass) ||
           value.is_a?(FalseClass) ||
           value.nil?
-      end
-
-      # Memoize cache keys for common cases to avoid repeated string operations
-      def memoized_cache_key(tuple)
-        @key_cache ||= {}
-        @key_cache_mutex ||= Mutex.new
-        @key_cache_mutex.synchronize do
-          @key_cache[tuple]
-        end
-      end
-
-      def memoize_cache_key(tuple, key)
-        @key_cache ||= {}
-        @key_cache_mutex ||= Mutex.new
-        @key_cache_mutex.synchronize do
-          @key_cache[tuple] = key.freeze
-        end
       end
     end
   end

@@ -39,10 +39,10 @@ module Vauban
       resource_cache_keys = generate_cache_keys
       cached_results = {}
       uncached_resources_with_keys = []
+      store = cache_store
 
-      cache_store_instance = cache_store
-      if cache_store_instance && cache_store_supports_read_multi?
-        cached_values = cache_store_instance.read_multi(*resource_cache_keys.values)
+      if store&.respond_to?(:read_multi)
+        cached_values = store.read_multi(*resource_cache_keys.values)
 
         resource_cache_keys.each do |resource, key|
           if cached_values.key?(key)
@@ -87,15 +87,8 @@ module Vauban
       uncached_results
     end
 
-    def cache_store_supports_read_multi?
-      cache_store = Vauban.config.cache_store
-      return false unless cache_store
-
-      cache_store.respond_to?(:read_multi)
-    end
-
     def cache_store
-      Vauban.config.cache_store
+      @cache_store ||= Vauban.config.cache_store
     end
   end
 end

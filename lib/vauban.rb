@@ -63,10 +63,9 @@ module Vauban
 
       debug_items = [
         "Check your policy's :#{@action} permission rules",
-        "Verify the user has the required relationships"
+        "Verify the user has the required relationships",
+        "Review context: #{@context.inspect}"
       ]
-      debug_items << "Review context: #{@context.inspect}" unless @context.empty?
-
       ErrorMessageBuilder.section("To debug:", debug_items)
     end
   end
@@ -200,58 +199,36 @@ module Vauban
     # Main authorization method
     def authorize(user, action, resource, context: {})
       policy_class = Registry.policy_for(resource.class)
-      unless policy_class
-        raise PolicyNotFound.new(resource.class, context: context)
-      end
+      raise PolicyNotFound.new(resource.class, context: context) unless policy_class
 
-      # Use can? which is cached, but raise exception if not allowed
-      allowed = can?(user, action, resource, context: context)
-      unless allowed
-        # Get available permissions for better error message
-        available_permissions = policy_class.available_permissions if policy_class
-        raise Unauthorized.new(user, action, resource, available_permissions: available_permissions, context: context)
-      end
+      return true if can?(user, action, resource, context: context)
 
-      true
+      raise Unauthorized.new(
+        user, action, resource,
+        available_permissions: policy_class.available_permissions,
+        context: context
+      )
     end
 
     # Check permission without raising
     def can?(user, action, resource, context: {})
       cache_key = Cache.key_for_permission(user, action, resource, context: context)
-
       Cache.fetch(cache_key) do
-        policy_class = Registry.policy_for(resource.class)
-        return false unless policy_class
-
-        # Use memoized policy instance
-        policy = policy_class.instance_for(user)
-        policy.allowed?(action, resource, user, context: context)
+        with_policy(user, resource) { |policy| policy.allowed?(action, resource, user, context: context) } || false
       end
     rescue StandardError => e
-      # Fail-safe: deny access on any error
-      # Only log in development/test to avoid noise in production
-      if development_or_test?
-        ErrorHandler.handle_authorization_error(e, context: { action: action, resource: resource.class.name })
-      end
+      log_authorization_error(e, action: action, resource: resource)
       false
     end
 
     # Get all permissions for a resource
     def all_permissions(user, resource, context: {})
       cache_key = Cache.key_for_all_permissions(user, resource, context: context)
-
       Cache.fetch(cache_key) do
-        policy_class = Registry.policy_for(resource.class)
-        return {} unless policy_class
-
-        # Use memoized policy instance
-        policy = policy_class.instance_for(user)
-        policy.all_permissions(user, resource, context: context)
+        with_policy(user, resource) { |policy| policy.all_permissions(user, resource, context: context) } || {}
       end
     rescue StandardError => e
-      # Fail-safe: return empty permissions on error
-      # Log in development/test to help debug issues
-      ErrorHandler.handle_authorization_error(e, context: { resource: resource.class.name }) if development_or_test?
+      log_authorization_error(e, resource: resource)
       {}
     end
 
@@ -264,36 +241,45 @@ module Vauban
     # Get accessible records (scoping)
     def accessible_by(user, action, resource_class, context: {})
       policy_class = Registry.policy_for(resource_class)
-      unless policy_class
-        raise PolicyNotFound.new(resource_class, context: context)
-      end
+      raise PolicyNotFound.new(resource_class, context: context) unless policy_class
 
-      # Use memoized policy instance
-      policy = policy_class.instance_for(user)
-      policy.scope(user, action, context: context)
+      policy_class.instance_for(user).scope(user, action, context: context)
     end
 
-    # Clear all cached permissions
     def clear_cache!
       Cache.clear
     end
 
-    # Clear cache for a specific resource (useful when resource is updated)
     def clear_cache_for_resource!(resource)
       Cache.clear_for_resource(resource)
     end
 
-    # Clear cache for a specific user (useful when user permissions change)
     def clear_cache_for_user!(user)
       Cache.clear_for_user(user)
     end
 
-    # Clear policy instance cache (useful for testing or when user permissions change)
     def clear_policy_instance_cache!
       Policy.clear_instance_cache!
     end
 
     private
+
+    def with_policy(user, resource)
+      policy_class = Registry.policy_for(resource.class)
+      return nil unless policy_class
+
+      policy = policy_class.instance_for(user)
+      yield policy
+    end
+
+    def log_authorization_error(error, action: nil, resource: nil)
+      return unless development_or_test?
+
+      ErrorHandler.handle_authorization_error(
+        error,
+        context: { action: action, resource: resource&.class&.name }.compact
+      )
+    end
 
     def development_or_test?
       defined?(::Rails) && ::Rails.respond_to?(:env) && (::Rails.env.development? || ::Rails.env.test?)
