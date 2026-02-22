@@ -114,7 +114,7 @@ RSpec.describe Vauban do
       allow(TestResourcePolicy).to receive(:new).and_return(policy_instance)
       allow(policy_instance).to receive(:allowed?).and_return(true)
       Vauban.authorize(user, :view, resource, context: { admin: true })
-      expect(policy_instance).to have_received(:allowed?).with(:view, resource, user, context: { admin: true })
+      expect(policy_instance).to have_received(:allowed?).with(:view, resource, context: { admin: true })
     end
 
     it "includes resource info in error message" do

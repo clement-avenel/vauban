@@ -2,11 +2,7 @@
 
 Vauban.configure do |config|
   config.current_user_method = :current_user
-  config.cache_store = Rails.cache if defined?(Rails.cache)
-  config.frontend_api_enabled = true
-  config.frontend_cache_ttl = 5.minutes
+  # config.cache_store = Rails.cache  # defaults to Rails.cache via Railtie
+  # config.cache_ttl = 1.hour
+  # config.policy_paths = ["app/policies/**/*_policy.rb"]
 end
-
-# Auto-discover and register all policies
-# Policy discovery is handled automatically by Vauban::Railtie
-# after Rails has fully initialized, so models are available

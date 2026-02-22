@@ -21,7 +21,7 @@ module Vauban
     def can?(user, action, resource, context: {})
       cache_key = Cache.key_for_permission(user, action, resource, context: context)
       Cache.fetch(cache_key) do
-        with_policy(user, resource) { |policy| policy.allowed?(action, resource, user, context: context) } || false
+        with_policy(user, resource) { |policy| policy.allowed?(action, resource, context: context) } || false
       end
     rescue StandardError => e
       log_authorization_error(e, action: action, resource: resource)
@@ -31,7 +31,7 @@ module Vauban
     def all_permissions(user, resource, context: {})
       cache_key = Cache.key_for_all_permissions(user, resource, context: context)
       Cache.fetch(cache_key) do
-        with_policy(user, resource) { |policy| policy.all_permissions(user, resource, context: context) } || {}
+        with_policy(user, resource) { |policy| policy.all_permissions(resource, context: context) } || {}
       end
     rescue StandardError => e
       log_authorization_error(e, resource: resource)
@@ -53,7 +53,7 @@ module Vauban
       policy_class = Registry.policy_for(resource_class)
       raise PolicyNotFound.new(resource_class, context: context) unless policy_class
 
-      policy_class.instance_for(user).scope(user, action, context: context)
+      policy_class.instance_for(user).scope(action, context: context)
     end
 
     def clear_cache!
@@ -82,16 +82,10 @@ module Vauban
     end
 
     def log_authorization_error(error, action: nil, resource: nil)
-      return unless development_or_test?
-
       ErrorHandler.handle_authorization_error(
         error,
         context: { action: action, resource: resource&.class&.name }.compact
       )
-    end
-
-    def development_or_test?
-      defined?(::Rails) && ::Rails.respond_to?(:env) && (::Rails.env.development? || ::Rails.env.test?)
     end
 
     # --- Batch helpers ---
@@ -116,7 +110,7 @@ module Vauban
       uncached.to_h do |resource, cache_key|
         permissions = Cache.fetch(cache_key) do
           policy_class = policy_classes[resource.class]
-          policy_class ? policy_class.instance_for(user).all_permissions(user, resource, context: context) : {}
+          policy_class ? policy_class.instance_for(user).all_permissions(resource, context: context) : {}
         end
         [ resource, permissions ]
       end

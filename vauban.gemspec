@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email         = [ "contact@clement-avenel.com" ]
 
   spec.summary       = "Relationship-based authorization for Rails"
-  spec.description   = "A Rails-first authorization gem using Relationship-Based Access Control (ReBAC) with a readable DSL, comprehensive tooling, and frontend API support. Named after Sébastien Le Prestre de Vauban, the master builder of citadels."
+  spec.description   = "A Rails-first authorization gem using Relationship-Based Access Control (ReBAC) with a readable DSL and comprehensive tooling. Named after Sébastien Le Prestre de Vauban, the master builder of citadels."
   spec.homepage      = "https://github.com/clement-avenel/vauban"
   spec.license       = "MIT"
   spec.required_ruby_version = ">= 3.0.0"

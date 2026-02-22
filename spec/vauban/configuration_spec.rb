@@ -16,17 +16,7 @@ RSpec.describe Vauban::Configuration do
 
     it "sets default cache_ttl" do
       config = Vauban::Configuration.new
-      expect(config.cache_ttl).to eq(1.hour)
-    end
-
-    it "sets default frontend_api_enabled to true" do
-      config = Vauban::Configuration.new
-      expect(config.frontend_api_enabled).to be true
-    end
-
-    it "sets default frontend_cache_ttl" do
-      config = Vauban::Configuration.new
-      expect(config.frontend_cache_ttl).to eq(5.minutes)
+      expect(config.cache_ttl).to eq(3600)
     end
 
     it "sets default policy_paths" do
@@ -51,18 +41,8 @@ RSpec.describe Vauban::Configuration do
     end
 
     it "allows setting cache_ttl" do
-      config.cache_ttl = 30.minutes
-      expect(config.cache_ttl).to eq(30.minutes)
-    end
-
-    it "allows setting frontend_api_enabled" do
-      config.frontend_api_enabled = false
-      expect(config.frontend_api_enabled).to be false
-    end
-
-    it "allows setting frontend_cache_ttl" do
-      config.frontend_cache_ttl = 10.minutes
-      expect(config.frontend_cache_ttl).to eq(10.minutes)
+      config.cache_ttl = 1800
+      expect(config.cache_ttl).to eq(1800)
     end
 
     it "allows setting policy_paths" do
@@ -80,13 +60,11 @@ RSpec.describe Vauban::Configuration do
     it "can be configured via Vauban.configure" do
       Vauban.configure do |config|
         config.current_user_method = :authenticated_user
-        config.cache_ttl = 30.minutes
-        config.frontend_api_enabled = false
+        config.cache_ttl = 1800
       end
 
       expect(Vauban.config.current_user_method).to eq(:authenticated_user)
-      expect(Vauban.config.cache_ttl).to eq(30.minutes)
-      expect(Vauban.config.frontend_api_enabled).to be false
+      expect(Vauban.config.cache_ttl).to eq(1800)
     end
   end
 end

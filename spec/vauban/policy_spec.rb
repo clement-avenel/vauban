@@ -30,7 +30,7 @@ RSpec.describe Vauban::Policy do
 
     it "checks permissions correctly" do
       policy = TestPolicy.new(user)
-      expect(policy.allowed?(:view, document, user)).to be true
+      expect(policy.allowed?(:view, document)).to be true
     end
   end
 
@@ -218,7 +218,7 @@ RSpec.describe Vauban::Policy do
 
     it "accepts user parameter" do
       policy = TestResourcePolicy.new(user)
-      expect(policy.instance_variable_get(:@user)).to eq(user)
+      expect(policy.user).to eq(user)
     end
   end
 
@@ -247,19 +247,19 @@ RSpec.describe Vauban::Policy do
     it "returns true for allowed permissions" do
       policy = TestResourcePolicy.new(user)
       public_resource = double("Resource", public?: true)
-      expect(policy.allowed?(:view, public_resource, user)).to be true
+      expect(policy.allowed?(:view, public_resource)).to be true
     end
 
     it "returns false for denied permissions" do
       policy = TestResourcePolicy.new(user)
       private_resource = double("Resource", public?: false)
-      expect(policy.allowed?(:view, private_resource, user)).to be false
+      expect(policy.allowed?(:view, private_resource)).to be false
     end
 
     it "returns false for undefined permissions" do
       policy = TestResourcePolicy.new(user)
       resource = double("Resource")
-      expect(policy.allowed?(:delete, resource, user)).to be false
+      expect(policy.allowed?(:delete, resource)).to be false
     end
 
     it "passes context to permission" do
@@ -267,7 +267,7 @@ RSpec.describe Vauban::Policy do
       resource = double("Resource", public?: true)
       permission = TestResourcePolicy.permissions[:view]
       allow(permission).to receive(:allowed?).and_return(true)
-      policy.allowed?(:view, resource, user, context: { admin: true })
+      policy.allowed?(:view, resource, context: { admin: true })
       expect(permission).to have_received(:allowed?).with(resource, user, context: { admin: true }, policy: policy)
     end
   end
@@ -297,7 +297,7 @@ RSpec.describe Vauban::Policy do
     it "returns hash of all permissions" do
       policy = TestResourcePolicy.new(user)
       public_resource = double("Resource", public?: true, owner: user)
-      permissions = policy.all_permissions(user, public_resource)
+      permissions = policy.all_permissions(public_resource)
       expect(permissions).to be_a(Hash)
       expect(permissions.keys).to include("view", "edit")
     end
@@ -305,7 +305,7 @@ RSpec.describe Vauban::Policy do
     it "includes permission results" do
       policy = TestResourcePolicy.new(user)
       public_resource = double("Resource", public?: true, owner: user)
-      permissions = policy.all_permissions(user, public_resource)
+      permissions = policy.all_permissions(public_resource)
       expect(permissions["view"]).to be true
       expect(permissions["edit"]).to be true
     end
@@ -313,7 +313,7 @@ RSpec.describe Vauban::Policy do
     it "passes context to each permission check" do
       policy = TestResourcePolicy.new(user)
       resource = double("Resource", public?: false, owner: user)
-      permissions = policy.all_permissions(user, resource, context: { admin: true })
+      permissions = policy.all_permissions(resource, context: { admin: true })
       expect(permissions).to be_a(Hash)
     end
   end
@@ -344,7 +344,7 @@ RSpec.describe Vauban::Policy do
       ]
       allow(resource_class).to receive(:all).and_return(all_resources)
 
-      result = policy.scope(user, :view)
+      result = policy.scope(:view)
       expect(result.length).to eq(2)
     end
 
@@ -353,7 +353,7 @@ RSpec.describe Vauban::Policy do
       all_resources = [ double("R1"), double("R2") ]
       allow(resource_class).to receive(:all).and_return(all_resources)
 
-      result = policy.scope(user, :nonexistent)
+      result = policy.scope(:nonexistent)
       expect(result).to eq(all_resources)
     end
 
@@ -365,8 +365,7 @@ RSpec.describe Vauban::Policy do
       ]
       allow(resource_class).to receive(:all).and_return(all_resources)
 
-      # Scope block should receive context and filter accordingly
-      result = policy.scope(user, :view, context: { admin: true })
+      result = policy.scope(:view, context: { admin: true })
       expect(result).to be_an(Array)
       # Verify scope was executed (should return filtered results)
       expect(result.length).to eq(2)
@@ -387,7 +386,7 @@ RSpec.describe Vauban::Policy do
 
       policy = NonARPolicy.new(user)
       expect {
-        policy.scope(user, :view)
+        policy.scope(:view)
       }.to raise_error(ArgumentError) do |error|
         expect(error.message).to include("must respond to .all")
         expect(error.message).to include("NonARResource")
@@ -469,7 +468,7 @@ RSpec.describe Vauban::Policy do
     it "evaluates condition block" do
       policy = TestResourcePolicy.new(user)
       public_resource = double("Resource", public?: true)
-      result = policy.evaluate_condition(:is_public, public_resource, user, {})
+      result = policy.evaluate_condition(:is_public, public_resource, {})
       expect(result).to be true
     end
 
@@ -477,14 +476,14 @@ RSpec.describe Vauban::Policy do
       policy = TestResourcePolicy.new(user)
       resource = double("Resource", public?: false)
       context = { admin: true }
-      result = policy.evaluate_condition(:is_public, resource, user, context)
+      result = policy.evaluate_condition(:is_public, resource, context)
       expect(result).to be false
     end
 
     it "returns nil for undefined conditions" do
       policy = TestResourcePolicy.new(user)
       resource = double("Resource")
-      result = policy.evaluate_condition(:nonexistent, resource, user, {})
+      result = policy.evaluate_condition(:nonexistent, resource, {})
       expect(result).to be_nil
     end
   end

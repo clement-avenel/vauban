@@ -13,7 +13,7 @@ RSpec.describe Vauban::Cache do
     described_class.clear_key_cache!
     Vauban.configure do |config|
       config.cache_store = cache_store
-      config.cache_ttl = 1.hour
+      config.cache_ttl = 3600
     end
   end
 
@@ -167,19 +167,19 @@ RSpec.describe Vauban::Cache do
   describe ".fetch" do
     context "when cache is enabled" do
       it "returns cached value" do
-        allow(cache_store).to receive(:fetch).with("k", expires_in: 1.hour).and_return("cached")
+        allow(cache_store).to receive(:fetch).with("k", expires_in: 3600).and_return("cached")
         expect(described_class.fetch("k") { "computed" }).to eq("cached")
       end
 
       it "yields and caches on miss" do
-        allow(cache_store).to receive(:fetch).with("k", expires_in: 1.hour).and_yield
+        allow(cache_store).to receive(:fetch).with("k", expires_in: 3600).and_yield
         expect(described_class.fetch("k") { "computed" }).to eq("computed")
       end
 
       it "uses custom TTL" do
-        allow(cache_store).to receive(:fetch).with("k", expires_in: 30.minutes).and_yield
-        described_class.fetch("k", ttl: 30.minutes) { "v" }
-        expect(cache_store).to have_received(:fetch).with("k", expires_in: 30.minutes)
+        allow(cache_store).to receive(:fetch).with("k", expires_in: 1800).and_yield
+        described_class.fetch("k", ttl: 1800) { "v" }
+        expect(cache_store).to have_received(:fetch).with("k", expires_in: 1800)
       end
 
       it "falls back on cache error" do

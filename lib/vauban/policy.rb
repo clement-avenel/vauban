@@ -2,6 +2,8 @@
 
 module Vauban
   class Policy
+    attr_reader :user
+
     class << self
       attr_accessor :resource_class
 
@@ -63,25 +65,26 @@ module Vauban
       @user = user
     end
 
-    def all_permissions(user, resource, context: {})
+    def all_permissions(resource, context: {})
       self.class.permissions.each_with_object({}) do |(action, _), result|
-        result[action.to_s] = allowed?(action, resource, user, context: context)
+        result[action.to_s] = allowed?(action, resource, context: context)
       end
     end
 
-    def allowed?(action, resource, user, context: {})
+    def allowed?(action, resource, context: {})
       permission = self.class.permissions[action.to_sym]
       return false unless permission
 
-      permission.allowed?(resource, user, context: context, policy: self)
+      permission.allowed?(resource, @user, context: context, policy: self)
     end
 
-    def scope(user, action, context: {})
-      scope_block = self.class.scopes[action.to_sym]
-      return resource_class.all unless scope_block
+    def scope(action, context: {})
       raise ArgumentError, "#{resource_class} must respond to .all for scoping" unless resource_class.respond_to?(:all)
 
-      resource_class.instance_exec(user, context, &scope_block)
+      scope_block = self.class.scopes[action.to_sym]
+      return resource_class.all unless scope_block
+
+      resource_class.instance_exec(@user, context, &scope_block)
     end
 
     def resource_class
@@ -94,10 +97,10 @@ module Vauban
       resource.instance_eval(&relationship_block)
     end
 
-    def evaluate_condition(name, resource, user, context)
+    def evaluate_condition(name, resource, context)
       condition_block = self.class.conditions[name]
       return nil unless condition_block
-      condition_block.call(resource, user, context)
+      condition_block.call(resource, @user, context)
     end
   end
 end

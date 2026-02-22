@@ -140,7 +140,7 @@ RSpec.describe Vauban::Registry do
 
       it "attempts to load policy class if not found" do
         # Clear registry first
-        Vauban::Registry.initialize_registry
+        Vauban::Registry.reset!
 
         # Create policy class after clearing registry (simulating autoloading)
         policy_class = Class.new(Vauban::Policy) do
@@ -157,7 +157,7 @@ RSpec.describe Vauban::Registry do
         # Use a unique resource class name that definitely doesn't have a policy
         unique_resource = Class.new
         stub_const("UniqueTestResource", unique_resource)
-        Vauban::Registry.initialize_registry
+        Vauban::Registry.reset!
         expect(Vauban::Registry.policy_for(UniqueTestResource)).to be_nil
       end
     end
@@ -173,7 +173,7 @@ RSpec.describe Vauban::Registry do
     end
 
     before do
-      Vauban::Registry.initialize_registry
+      Vauban::Registry.reset!
       stub_const("DiscoveredResource", resource_class)
       stub_const("DiscoveredResourcePolicy", policy_class)
     end
@@ -223,14 +223,14 @@ RSpec.describe Vauban::Registry do
     end
   end
 
-  describe ".initialize_registry" do
+  describe ".reset!" do
     it "initializes empty policies hash" do
-      Vauban::Registry.initialize_registry
+      Vauban::Registry.reset!
       expect(Vauban::Registry.policies).to eq({})
     end
 
     it "initializes empty resources array" do
-      Vauban::Registry.initialize_registry
+      Vauban::Registry.reset!
       expect(Vauban::Registry.resources).to eq([])
     end
 
@@ -246,7 +246,7 @@ RSpec.describe Vauban::Registry do
       Vauban::Registry.register(TestResourcePolicy)
       expect(Vauban::Registry.policies).not_to be_empty
 
-      Vauban::Registry.initialize_registry
+      Vauban::Registry.reset!
       expect(Vauban::Registry.policies).to be_empty
     end
   end

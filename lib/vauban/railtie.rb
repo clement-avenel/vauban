@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require "vauban/rails/authorization_helpers"
-require "vauban/rails/controller_helpers"
-require "vauban/rails/view_helpers"
+require "vauban/rails/helpers"
 
 module Vauban
   class Railtie < ::Rails::Railtie

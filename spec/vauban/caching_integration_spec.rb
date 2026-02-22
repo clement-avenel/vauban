@@ -25,13 +25,13 @@ RSpec.describe "Vauban caching integration" do
 
     Vauban.configure do |config|
       config.cache_store = cache_store
-      config.cache_ttl = 1.hour
+      config.cache_ttl = 3600
     end
   end
 
   after do
     Vauban.configuration = nil
-    Vauban::Registry.initialize_registry
+    Vauban::Registry.reset!
   end
 
   describe "Vauban.can?" do
@@ -40,19 +40,19 @@ RSpec.describe "Vauban caching integration" do
       policy_cache_key = Vauban::Cache.key_for_policy(resource_class)
 
       # Stub both policy lookup cache and permission cache
-      allow(cache_store).to receive(:fetch).with(policy_cache_key, expires_in: 1.hour).and_yield
-      allow(cache_store).to receive(:fetch).with(permission_cache_key, expires_in: 1.hour).and_yield
+      allow(cache_store).to receive(:fetch).with(policy_cache_key, expires_in: 3600).and_yield
+      allow(cache_store).to receive(:fetch).with(permission_cache_key, expires_in: 3600).and_yield
       result1 = Vauban.can?(user, :view, resource)
       expect(result1).to be true
 
       # Second call - policy is cached, permission should be cached
-      allow(cache_store).to receive(:fetch).with(policy_cache_key, expires_in: 1.hour).and_return(TestResourcePolicy)
-      allow(cache_store).to receive(:fetch).with(permission_cache_key, expires_in: 1.hour).and_return(true)
+      allow(cache_store).to receive(:fetch).with(policy_cache_key, expires_in: 3600).and_return(TestResourcePolicy)
+      allow(cache_store).to receive(:fetch).with(permission_cache_key, expires_in: 3600).and_return(true)
       result2 = Vauban.can?(user, :view, resource)
       expect(result2).to be true
 
       # Verify permission cache was called
-      expect(cache_store).to have_received(:fetch).with(permission_cache_key, expires_in: 1.hour).at_least(:once)
+      expect(cache_store).to have_received(:fetch).with(permission_cache_key, expires_in: 3600).at_least(:once)
     end
 
     it "uses different cache keys for different contexts" do
@@ -65,8 +65,8 @@ RSpec.describe "Vauban caching integration" do
       Vauban.can?(user, :view, resource, context: { project: 1 })
       Vauban.can?(user, :view, resource, context: { project: 2 })
 
-      expect(cache_store).to have_received(:fetch).with(cache_key1, expires_in: 1.hour)
-      expect(cache_store).to have_received(:fetch).with(cache_key2, expires_in: 1.hour)
+      expect(cache_store).to have_received(:fetch).with(cache_key1, expires_in: 3600)
+      expect(cache_store).to have_received(:fetch).with(cache_key2, expires_in: 3600)
     end
   end
 
@@ -76,13 +76,13 @@ RSpec.describe "Vauban caching integration" do
       policy_cache_key = Vauban::Cache.key_for_policy(resource_class)
 
       # Stub both policy lookup cache and all_permissions cache
-      allow(cache_store).to receive(:fetch).with(policy_cache_key, expires_in: 1.hour).and_yield
-      allow(cache_store).to receive(:fetch).with(all_perms_cache_key, expires_in: 1.hour).and_yield
+      allow(cache_store).to receive(:fetch).with(policy_cache_key, expires_in: 3600).and_yield
+      allow(cache_store).to receive(:fetch).with(all_perms_cache_key, expires_in: 3600).and_yield
       result = Vauban.all_permissions(user, resource)
       expect(result).to be_a(Hash)
       expect(result).to have_key("view")
 
-      expect(cache_store).to have_received(:fetch).with(all_perms_cache_key, expires_in: 1.hour)
+      expect(cache_store).to have_received(:fetch).with(all_perms_cache_key, expires_in: 3600)
     end
   end
 
@@ -96,8 +96,8 @@ RSpec.describe "Vauban caching integration" do
       allow(cache_store).to receive(:fetch).and_yield
       Vauban.batch_permissions(user, [ resource, resource2 ], context: {})
 
-      expect(cache_store).to have_received(:fetch).with(cache_key1, expires_in: 1.hour)
-      expect(cache_store).to have_received(:fetch).with(cache_key2, expires_in: 1.hour)
+      expect(cache_store).to have_received(:fetch).with(cache_key1, expires_in: 3600)
+      expect(cache_store).to have_received(:fetch).with(cache_key2, expires_in: 3600)
     end
   end
 
@@ -105,16 +105,16 @@ RSpec.describe "Vauban caching integration" do
     it "caches policy lookups" do
       cache_key = Vauban::Cache.key_for_policy(resource_class)
 
-      allow(cache_store).to receive(:fetch).with(cache_key, expires_in: 1.hour).and_yield
+      allow(cache_store).to receive(:fetch).with(cache_key, expires_in: 3600).and_yield
       policy1 = Vauban::Registry.policy_for(resource_class)
       expect(policy1).to eq(TestResourcePolicy)
 
       # Second call should use cached value
-      allow(cache_store).to receive(:fetch).with(cache_key, expires_in: 1.hour).and_return(TestResourcePolicy)
+      allow(cache_store).to receive(:fetch).with(cache_key, expires_in: 3600).and_return(TestResourcePolicy)
       policy2 = Vauban::Registry.policy_for(resource_class)
       expect(policy2).to eq(TestResourcePolicy)
 
-      expect(cache_store).to have_received(:fetch).with(cache_key, expires_in: 1.hour).twice
+      expect(cache_store).to have_received(:fetch).with(cache_key, expires_in: 3600).twice
     end
   end
 
