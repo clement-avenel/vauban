@@ -4,6 +4,7 @@ PATH
     vauban (0.1.0)
       activerecord (>= 6.0)
       activesupport (>= 6.0)
+      concurrent-ruby (>= 1.0)
       railties (>= 6.0)
 
 GEM
