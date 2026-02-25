@@ -62,7 +62,7 @@ class DocumentsController < ApplicationController
   private
 
   def set_document
-    @document = Document.find(params[:id])
+    @document = Document.includes(:owner, :collaborators).find(params[:id])
   end
 
   def document_params
