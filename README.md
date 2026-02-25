@@ -71,7 +71,7 @@ class DocumentPolicy < Vauban::Policy
     allow_if { |doc, user| doc.owner == user }
   end
 
-  # Optional: Define scopes for efficient queries
+  # Optional: Define scopes for efficient queries (or use allow_where below for auto-scope)
   scope :view do |user, context|
     Document.left_joins(:document_collaborations)
       .where(public: true)
@@ -188,6 +188,7 @@ end
 | `permission :name { ... }` | Defines a permission with allow/deny rules |
 | `allow_if { \|resource, user, context\| ... }` | Grants access if block returns truthy |
 | `deny_if { \|resource, user, context\| ... }` | Denies access if block returns truthy (checked before allow rules) |
+| `allow_where { \|user, context\| hash }` | Declarative conditions: same hash powers `can?` (record match) and `accessible_by` (SQL scope). E.g. `{ public: true }` or `{ owner_id: user.id }`. No separate scope block needed. |
 | `scope :action { \|user, context\| ... }` | Defines a scope for `accessible_by` queries |
 | `relationship :name { ... }` | Defines a reusable relationship block |
 | `condition :name { \|resource, user, context\| ... }` | Defines a reusable condition block |

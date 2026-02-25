@@ -247,6 +247,68 @@ RSpec.describe Vauban::Permission do
       end
     end
 
+    context "with allow_where" do
+      it "adds allow_where blocks" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |u, _ctx| { owner_id: u.id } }
+        end
+        expect(permission.allow_where_blocks.size).to eq(1)
+      end
+
+      it "returns true when record matches a condition hash" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |u, _ctx| { owner_id: u.id, public: false } }
+        end
+        record = double("Document", owner_id: 1, public: false)
+        expect(permission.allowed?(record, user, context: {}, policy: nil)).to be true
+      end
+
+      it "returns false when record does not match any condition hash" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |u, _ctx| { owner_id: u.id } }
+        end
+        record = double("Document", owner_id: 99)
+        expect(permission.allowed?(record, user, context: {}, policy: nil)).to be false
+      end
+
+      it "allows when any of multiple allow_where hashes matches" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |_user, _ctx| { public: true } }
+          allow_where { |u, _ctx| { owner_id: u.id } }
+        end
+        record = double("Document", public: false, owner_id: 1)
+        expect(permission.allowed?(record, user, context: {}, policy: nil)).to be true
+      end
+
+      it "supports array values (IN semantics) for record match" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |_user, _ctx| { owner_id: [ 1, 2, 3 ] } }
+        end
+        record = double("Document", owner_id: 2)
+        expect(permission.allowed?(record, user, context: {}, policy: nil)).to be true
+        record2 = double("Document", owner_id: 99)
+        expect(permission.allowed?(record2, user, context: {}, policy: nil)).to be false
+      end
+
+      it "checks allow_where before allow_if" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |_user, _ctx| { id: 1 } }
+          allow_if { |_r| false }
+        end
+        record = double("Document", id: 1)
+        expect(permission.allowed?(record, user, context: {}, policy: nil)).to be true
+      end
+
+      it "falls back to allow_if when no allow_where matches" do
+        permission = Vauban::Permission.new(:index) do
+          allow_where { |_user, _ctx| { id: 999 } }
+          allow_if { |r| r.public? }
+        end
+        record = double("Document", id: 1, public?: true)
+        expect(permission.allowed?(record, user, context: {}, policy: nil)).to be true
+      end
+    end
+
     context "complex scenarios" do
       it "handles multiple deny and allow rules correctly" do
         permission = Vauban::Permission.new(:edit) do

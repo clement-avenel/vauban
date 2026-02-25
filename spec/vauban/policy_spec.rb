@@ -494,6 +494,40 @@ RSpec.describe Vauban::Policy do
         expect(error.message).to include("NonARResource")
       end
     end
+
+    it "auto-generates scope from allow_where when no explicit scope (Path B)" do
+      res_class = Class.new do
+        def self.all
+          @relation ||= relation_chain
+        end
+
+        def self.where(*)
+          relation_chain
+        end
+
+        def self.relation_chain
+          @chain ||= Object.new.tap do |c|
+            def c.where(*); self; end
+            def c.or(*); self; end
+            def c.distinct; self; end
+          end
+        end
+      end
+      policy_class = Class.new(Vauban::Policy) do
+        resource res_class
+
+        permission :index do
+          allow_where { |u, _ctx| { owner_id: u.id } }
+          allow_where { |_user, _ctx| { public: true } }
+        end
+      end
+      stub_const("ScopedByAllowWhereResource", res_class)
+      stub_const("ScopedByAllowWherePolicy", policy_class)
+
+      policy = policy_class.new(user)
+      result = policy.scope(:index, context: {})
+      expect(result).to eq(res_class.relation_chain)
+    end
   end
 
   describe "#resource_class" do

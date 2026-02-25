@@ -203,23 +203,31 @@ module Vauban
       raise ArgumentError, "#{resource_class} must respond to .all for scoping" unless resource_class.respond_to?(:all)
 
       config = self.class.scope_configs[action.to_sym]
-      return resource_class.all unless config
+      permission = self.class.permissions[action.to_sym]
 
-      rel = config[:relation]
-      scope_block = config[:block]
+      # Explicit scope config wins
+      if config
+        rel = config[:relation]
+        scope_block = config[:block]
 
-      if rel
-        ids = Vauban.object_ids_for_relation(@user, rel, resource_class)
-        base = ids.any? ? resource_class.where(id: ids) : resource_class.none
-        if scope_block
-          base = base.or(resource_class.instance_exec(@user, context, &scope_block))
+        if rel
+          ids = Vauban.object_ids_for_relation(@user, rel, resource_class)
+          base = ids.any? ? resource_class.where(id: ids) : resource_class.none
+          if scope_block
+            base = base.or(resource_class.instance_exec(@user, context, &scope_block))
+          end
+          return base.distinct
         end
-        base.distinct
-      elsif scope_block
-        resource_class.instance_exec(@user, context, &scope_block)
-      else
-        resource_class.all
+        return resource_class.instance_exec(@user, context, &scope_block) if scope_block
       end
+
+      # No explicit scope: auto-generate from allow_where if present (Path B)
+      if permission&.allow_where_blocks&.any? && resource_class.respond_to?(:where)
+        hashes = permission.evaluate_allow_where_blocks(@user, context, self)
+        return AllowWhere.build_scope(resource_class, hashes) if hashes.any?
+      end
+
+      resource_class.all
     end
 
     # @return [Class] the resource class this policy governs
