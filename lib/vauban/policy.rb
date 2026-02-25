@@ -27,12 +27,14 @@ module Vauban
       end
 
       # Defines a named permission with allow/deny rules.
+      # When +relation:+ is set, an implicit allow_if { Vauban.has_relation?(user, relation, resource) } is added (with indirect traversal).
       #
       # @param name [Symbol] permission name (e.g. :view, :edit)
+      # @param relation [Symbol, nil] optional ReBAC relation; if set, allowed when user has this relation (direct or via)
       # @yield block evaluated in the Permission DSL context (use allow_if / deny_if)
       # @return [Permission]
-      def permission(name, &block)
-        permissions[name] = Permission.new(name, &block)
+      def permission(name, relation: nil, &block)
+        permissions[name] = Permission.new(name, relation: relation, &block)
       end
 
       # @return [Hash{Symbol => Permission}] all defined permissions
@@ -43,6 +45,55 @@ module Vauban
       # @return [Array<Symbol>] list of defined permission names
       def available_permissions
         permissions.keys
+      end
+
+      # @return [Hash{Symbol => Array<Symbol>}] for each relation, relations that imply it (e.g. viewer => [:editor, :owner])
+      def relation_implied_by
+        @relation_implied_by ||= {}
+      end
+
+      # @return [Hash{Symbol => Hash{Symbol => Class}}] for each relation, via rules e.g. { viewer: { member: Team } }
+      def relation_via
+        @relation_via ||= {}
+      end
+
+      # Declares a ReBAC relation and optional implications / indirect traversal for graph resolution.
+      #
+      #   relation :viewer
+      #   relation :editor, requires: [:viewer]
+      #   relation :owner, requires: [:editor, :viewer]
+      #   relation :viewer, via: { member: Team }  # subject has viewer on doc if subject is member of a Team that has viewer on doc
+      #
+      # @param name [Symbol] relation name (e.g. :viewer, :editor)
+      # @param requires [Array<Symbol>] relations that this relation implies (subject has this => has those too)
+      # @param via [Hash{Symbol => Class}] indirect paths: relation_on_intermediate => intermediate_class (e.g. member: Team)
+      # @return [void]
+      def relation(name, requires: [], via: {})
+        name = name.to_sym
+        requires = requires.map(&:to_sym)
+        requires.each do |r|
+          relation_implied_by[r] ||= []
+          relation_implied_by[r] << name unless relation_implied_by[r].include?(name)
+        end
+        relation_via[name] = via.transform_keys(&:to_sym).transform_values(&:itself).freeze unless via.empty?
+      end
+
+      # Returns the list of relations to check for "subject has this relation" including implications.
+      # E.g. effective_relations(:viewer) => [:viewer, :editor, :owner] when editor requires viewer, owner requires editor and viewer.
+      #
+      # @param rel [Symbol]
+      # @return [Array<Symbol>]
+      def effective_relations(rel)
+        rel = rel.to_sym
+        [ rel ] + (relation_implied_by[rel] || []).freeze
+      end
+
+      # Returns the via rules for a relation (e.g. { member: Team }), or empty hash if none.
+      #
+      # @param rel [Symbol]
+      # @return [Hash{Symbol => Class}]
+      def relation_via_for(rel)
+        relation_via[rel.to_sym] || {}
       end
 
       # @return [Hash{Symbol => Proc}] all defined relationships
@@ -74,17 +125,25 @@ module Vauban
       end
 
       # Defines a scope for use with {Vauban.accessible_by}.
+      # When +relation:+ is set, the scope is built from the relation graph (direct + via); an optional block adds extra records (e.g. public docs).
       #
       # @param action [Symbol] the action this scope applies to (e.g. :view)
-      # @yield [user, context] block evaluated in the resource class context, should return a relation
+      # @param relation [Symbol, nil] optional ReBAC relation; if set, scope includes all resources where user has this relation
+      # @yield [user, context] optional block; when relation is set, its result is unioned with the relation-based scope
       # @return [void]
-      def scope(action, &block)
-        scopes[action] = block
+      def scope(action, relation: nil, &block)
+        action = action.to_sym
+        scope_configs[action] = { relation: relation&.to_sym, block: block }
       end
 
-      # @return [Hash{Symbol => Proc}] all defined scopes
+      # @return [Hash{Symbol => Proc}] action => block (for backward compatibility when no relation)
       def scopes
-        @scopes ||= {}
+        @scopes ||= scope_configs.transform_values { |c| c[:block] }
+      end
+
+      # @return [Hash{Symbol => Hash}] action => { relation:, block: }
+      def scope_configs
+        @scope_configs ||= {}
       end
 
       # Returns a thread-safe, memoized policy instance for the given user.
@@ -143,10 +202,24 @@ module Vauban
     def scope(action, context: {})
       raise ArgumentError, "#{resource_class} must respond to .all for scoping" unless resource_class.respond_to?(:all)
 
-      scope_block = self.class.scopes[action.to_sym]
-      return resource_class.all unless scope_block
+      config = self.class.scope_configs[action.to_sym]
+      return resource_class.all unless config
 
-      resource_class.instance_exec(@user, context, &scope_block)
+      rel = config[:relation]
+      scope_block = config[:block]
+
+      if rel
+        ids = Vauban.object_ids_for_relation(@user, rel, resource_class)
+        base = ids.any? ? resource_class.where(id: ids) : resource_class.none
+        if scope_block
+          base = base.or(resource_class.instance_exec(@user, context, &scope_block))
+        end
+        base.distinct
+      elsif scope_block
+        resource_class.instance_exec(@user, context, &scope_block)
+      else
+        resource_class.all
+      end
     end
 
     # @return [Class] the resource class this policy governs

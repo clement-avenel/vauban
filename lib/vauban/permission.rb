@@ -11,11 +11,16 @@ module Vauban
     Rule = Struct.new(:type, :block)
 
     # @param name [Symbol] permission name
+    # @param relation [Symbol, nil] when set, an allow_if { Vauban.has_relation?(user, relation, resource) } is added
     # @yield optional DSL block (use allow_if / deny_if inside)
-    def initialize(name, &block)
+    def initialize(name, relation: nil, &block)
       @name = name
       @allow_rules = []
       @deny_rules = []
+      if relation
+        rel = relation.to_sym
+        @allow_rules << Rule.new(:allow, ->(resource, user, _context) { Vauban.has_relation?(user, rel, resource) })
+      end
       instance_eval(&block) if block_given?
     end
 

@@ -179,6 +179,124 @@ RSpec.describe Vauban::RelationshipStore do
     end
   end
 
+  describe ".has_relation? (graph resolution)" do
+    let(:policy_class) do
+      Class.new(Vauban::Policy) do
+        resource RsDocument
+
+        relation :viewer
+        relation :viewer, via: { member: RsTeam }
+        relation :editor, requires: [ :viewer ]
+        relation :owner, requires: [ :editor, :viewer ]
+      end
+    end
+
+    before do
+      stub_const("RsDocumentPolicy", policy_class)
+      Vauban::Registry.register(policy_class)
+    end
+
+    it "returns true when the direct relation exists" do
+      Vauban.grant!(alice, :viewer, doc)
+      expect(Vauban.has_relation?(alice, :viewer, doc)).to be true
+    end
+
+    it "returns true when an implying relation exists (editor implies viewer)" do
+      Vauban.grant!(alice, :editor, doc)
+      expect(Vauban.has_relation?(alice, :viewer, doc)).to be true
+    end
+
+    it "returns true when owner exists (implies viewer and editor)" do
+      Vauban.grant!(alice, :owner, doc)
+      expect(Vauban.has_relation?(alice, :viewer, doc)).to be true
+      expect(Vauban.has_relation?(alice, :editor, doc)).to be true
+    end
+
+    it "returns false when no relation exists" do
+      expect(Vauban.has_relation?(alice, :viewer, doc)).to be false
+    end
+
+    it "returns true when relation is satisfied via intermediate (user member of team, team has viewer on doc)" do
+      Vauban.grant!(alice, :member, team)
+      Vauban.grant!(team, :viewer, doc)
+      expect(Vauban.has_relation?(alice, :viewer, doc)).to be true
+    end
+
+    it "falls back to single-relation check when policy has no relation schema" do
+      team_policy = Class.new(Vauban::Policy) { resource RsTeam }
+      Vauban::Registry.register(team_policy)
+
+      Vauban.grant!(alice, :viewer, team)
+      expect(Vauban.has_relation?(alice, :viewer, team)).to be true
+      expect(Vauban.has_relation?(alice, :editor, team)).to be false
+    end
+  end
+
+  describe ".objects_with_effective (graph resolution)" do
+    let(:doc2) { RsDocument.create!(title: "Doc 2") }
+    let(:policy_class) do
+      Class.new(Vauban::Policy) do
+        resource RsDocument
+
+        relation :viewer
+        relation :editor, requires: [ :viewer ]
+        relation :owner, requires: [ :editor, :viewer ]
+      end
+    end
+
+    before do
+      stub_const("RsDocumentPolicy", policy_class)
+      Vauban::Registry.register(policy_class)
+    end
+
+    it "returns objects where subject has the relation or any implying relation" do
+      Vauban.grant!(alice, :viewer, doc)
+      Vauban.grant!(alice, :editor, doc2)
+      ids = Vauban.objects_with_effective(alice, :viewer, object_type: RsDocument).distinct.pluck(:object_id)
+      expect(ids).to contain_exactly(doc.id, doc2.id)
+    end
+
+    it "without object_type falls back to direct relation only (no schema)" do
+      Vauban.grant!(alice, :viewer, doc)
+      Vauban.grant!(alice, :member, team)
+      rels = Vauban.objects_with_effective(alice, :viewer)
+      expect(rels.pluck(:object_id)).to include(doc.id)
+    end
+  end
+
+  describe ".object_ids_for_relation (with via)" do
+    let(:doc2) { RsDocument.create!(title: "Doc 2") }
+    let(:policy_class) do
+      Class.new(Vauban::Policy) do
+        resource RsDocument
+
+        relation :viewer
+        relation :viewer, via: { member: RsTeam }
+        relation :editor, requires: [ :viewer ]
+        relation :owner, requires: [ :editor, :viewer ]
+      end
+    end
+
+    before do
+      stub_const("RsDocumentPolicy", policy_class)
+      Vauban::Registry.register(policy_class)
+    end
+
+    it "returns direct object ids" do
+      Vauban.grant!(alice, :viewer, doc)
+      Vauban.grant!(alice, :editor, doc2)
+      ids = Vauban.object_ids_for_relation(alice, :viewer, RsDocument)
+      expect(ids).to contain_exactly(doc.id, doc2.id)
+    end
+
+    it "includes object ids from via path (user member of team, team has viewer on doc)" do
+      Vauban.grant!(alice, :member, team)
+      Vauban.grant!(team, :viewer, doc)
+      ids = Vauban.object_ids_for_relation(alice, :viewer, RsDocument)
+      expect(ids).to contain_exactly(doc.id)
+    end
+  end
+
   describe ".objects_with" do
     let(:doc2) { RsDocument.create!(title: "Another Doc") }
 

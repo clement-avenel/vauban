@@ -30,6 +30,10 @@ module Vauban
       where(relation: relation.to_s)
     }
 
+    scope :with_any_relation, ->(relations) {
+      where(relation: Array(relations).map(&:to_s))
+    }
+
     scope :between, ->(subject, object) {
       for_subject(subject).for_object(object)
     }

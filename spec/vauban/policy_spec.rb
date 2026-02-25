@@ -148,6 +148,108 @@ RSpec.describe Vauban::Policy do
     end
   end
 
+  describe ".relation (ReBAC schema)" do
+    let(:resource_class) { Class.new }
+    let(:policy_class) do
+      res_class = resource_class
+      Class.new(Vauban::Policy) do
+        resource res_class
+
+        relation :viewer
+        relation :editor, requires: [ :viewer ]
+        relation :owner, requires: [ :editor, :viewer ]
+      end
+    end
+
+    before do
+      stub_const("TestResource", resource_class)
+      stub_const("TestResourcePolicy", policy_class)
+    end
+
+    it "builds implied_by so effective_relations includes implying relations" do
+      expect(policy_class.effective_relations(:viewer)).to contain_exactly(:viewer, :editor, :owner)
+      expect(policy_class.effective_relations(:editor)).to contain_exactly(:editor, :owner)
+      expect(policy_class.effective_relations(:owner)).to eq([ :owner ])
+    end
+
+    it "effective_relations for an undeclared relation returns only that relation" do
+      expect(policy_class.effective_relations(:other)).to eq([ :other ])
+    end
+  end
+
+  describe ".relation with via (indirect traversal)" do
+    let(:team_class) { Class.new }
+    let(:resource_class) { Class.new }
+    let(:policy_class) do
+      res_class = resource_class
+      team_klass = team_class
+      Class.new(Vauban::Policy) do
+        resource res_class
+
+        relation :viewer
+        relation :viewer, via: { member: team_klass }
+        relation :editor, requires: [ :viewer ]
+        relation :editor, via: { member: team_klass }
+      end
+    end
+
+    before do
+      stub_const("Team", team_class)
+      stub_const("TestResource", resource_class)
+      stub_const("TestResourcePolicy", policy_class)
+    end
+
+    it "stores relation_via for indirect paths" do
+      expect(policy_class.relation_via_for(:viewer)).to eq({ member: Team })
+      expect(policy_class.relation_via_for(:editor)).to eq({ member: Team })
+      expect(policy_class.relation_via_for(:owner)).to eq({})
+    end
+  end
+
+  describe ".permission with relation:" do
+    let(:resource_class) { Class.new }
+    let(:policy_class) do
+      res_class = resource_class
+      Class.new(Vauban::Policy) do
+        resource res_class
+
+        permission :view, relation: :viewer do
+          allow_if { |r| r.public? }
+        end
+      end
+    end
+
+    before do
+      stub_const("TestResource", resource_class)
+      stub_const("TestResourcePolicy", policy_class)
+      Vauban::Registry.register(policy_class)
+    end
+
+    it "adds an implicit allow_if for has_relation?" do
+      perm = policy_class.permissions[:view]
+      expect(perm.rules.count { |r| r.type == :allow }).to be >= 1
+    end
+  end
+
+  describe ".scope with relation:" do
+    it "stores scope_config with relation and optional block" do
+      resource_class = Class.new
+      policy_class = Class.new(Vauban::Policy) do
+        resource resource_class
+
+        scope :view, relation: :viewer do |user, _ctx|
+          resource_class.where(public: true)
+        end
+      end
+      stub_const("TestResource", resource_class)
+      stub_const("TestResourcePolicy", policy_class)
+
+      config = policy_class.scope_configs[:view]
+      expect(config[:relation]).to eq(:viewer)
+      expect(config[:block]).to be_a(Proc)
+    end
+  end
+
   describe ".condition" do
     let(:resource_class) { Class.new }
     let(:policy_class) do

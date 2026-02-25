@@ -55,6 +55,73 @@ module Vauban
       relationship_model.between(subject, object).with_relation(relation).exists?
     end
 
+    # Checks whether the subject has the given relation to the object, using the
+    # policy's relation schema (implied relations + optional via: indirect paths).
+    # E.g. has_relation?(user, :viewer, doc) is true if (user, viewer|editor|owner, doc) or
+    # (user, member, team) and (team, viewer, doc). Falls back to direct check when no policy/schema.
+    #
+    # @param subject [ActiveRecord::Base]
+    # @param relation [Symbol, String]
+    # @param object [ActiveRecord::Base]
+    # @return [Boolean]
+    def has_relation?(subject, relation, object)
+      return true if has_direct_relation?(subject, relation, object)
+
+      policy_class = Registry.policy_for(object.class)
+      via_rules = policy_class&.relation_via_for(relation) || {}
+      via_rules.each do |via_rel, via_type|
+        intermediates = objects_with(subject, via_rel, object_type: via_type)
+        return true if intermediates.any? { |rec| has_direct_relation?(rec.object, relation, object) }
+      end
+      false
+    end
+
+    # Returns all object ids the subject has the given relation to (direct + via).
+    # Used by scope generation for accessible_by.
+    #
+    # @param subject [ActiveRecord::Base]
+    # @param relation [Symbol, String]
+    # @param object_type [Class]
+    # @return [Array<Integer>]
+    def object_ids_for_relation(subject, relation, object_type)
+      policy_class = Registry.policy_for(object_type)
+      ids = objects_with_effective(subject, relation, object_type: object_type).distinct.pluck(:object_id)
+
+      via_rules = policy_class&.relation_via_for(relation) || {}
+      via_rules.each do |via_rel, via_type|
+        intermediate_ids = objects_with(subject, via_rel, object_type: via_type).distinct.pluck(:object_id)
+        next if intermediate_ids.empty?
+
+        relations_to_check = policy_class.effective_relations(relation)
+        ids.concat(
+          relationship_model
+            .where(subject_type: via_type.name, subject_id: intermediate_ids, object_type: object_type.name)
+            .with_any_relation(relations_to_check)
+            .distinct
+            .pluck(:object_id)
+        )
+      end
+
+      ids.uniq
+    end
+
+    # Returns all objects the subject has the given relation to, including via
+    # implied relations from the policy schema (e.g. asking for :viewer includes
+    # objects where subject is :editor or :owner). Falls back to objects_with
+    # when no policy or schema is present.
+    #
+    # @param subject [ActiveRecord::Base]
+    # @param relation [Symbol, String]
+    # @param object_type [Class, nil] optional filter by object class
+    # @return [ActiveRecord::Relation<Vauban::Relationship>]
+    def objects_with_effective(subject, relation, object_type: nil)
+      policy_class = object_type ? Registry.policy_for(object_type) : nil
+      relations_to_check = policy_class&.effective_relations(relation) || [ relation.to_sym ]
+      scope = relationship_model.for_subject(subject).with_any_relation(relations_to_check)
+      scope = scope.where(object_type: object_type.name) if object_type
+      scope
+    end
+
     # Returns all relation names between a subject and an object.
     #
     # @param subject [ActiveRecord::Base]
@@ -113,6 +180,12 @@ module Vauban
     end
 
     private
+
+    def has_direct_relation?(subject, relation, object)
+      policy_class = Registry.policy_for(object.class)
+      relations_to_check = policy_class&.effective_relations(relation) || [ relation.to_sym ]
+      relations_to_check.any? { |r| relation?(subject, r, object) }
+    end
 
     def relationship_model
       unless defined?(Vauban::Relationship)
