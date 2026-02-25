@@ -77,32 +77,18 @@ module Vauban
     end
 
     # Returns all object ids the subject has the given relation to (direct + via).
-    # Used by scope generation for accessible_by.
+    # Used by scope generation for accessible_by. Result is cached by (subject, relation, object_type)
+    # and invalidated when relationships are granted or revoked.
     #
     # @param subject [ActiveRecord::Base]
     # @param relation [Symbol, String]
     # @param object_type [Class]
     # @return [Array<Integer>]
     def object_ids_for_relation(subject, relation, object_type)
-      policy_class = Registry.policy_for(object_type)
-      ids = objects_with_effective(subject, relation, object_type: object_type).distinct.pluck(:object_id)
-
-      via_rules = policy_class&.relation_via_for(relation) || {}
-      via_rules.each do |via_rel, via_type|
-        intermediate_ids = objects_with(subject, via_rel, object_type: via_type).distinct.pluck(:object_id)
-        next if intermediate_ids.empty?
-
-        relations_to_check = policy_class.effective_relations(relation)
-        ids.concat(
-          relationship_model
-            .where(subject_type: via_type.name, subject_id: intermediate_ids, object_type: object_type.name)
-            .with_any_relation(relations_to_check)
-            .distinct
-            .pluck(:object_id)
-        )
+      cache_key = Cache.key_for_relation_scope(subject, relation, object_type)
+      Cache.fetch(cache_key) do
+        compute_object_ids_for_relation(subject, relation, object_type)
       end
-
-      ids.uniq
     end
 
     # Returns all objects the subject has the given relation to, including via
@@ -198,6 +184,28 @@ module Vauban
     def invalidate_relationship_cache(subject, object)
       Cache.clear_for_user(subject) if subject
       Cache.clear_for_resource(object) if object
+    end
+
+    def compute_object_ids_for_relation(subject, relation, object_type)
+      policy_class = Registry.policy_for(object_type)
+      ids = objects_with_effective(subject, relation, object_type: object_type).distinct.pluck(:object_id)
+
+      via_rules = policy_class&.relation_via_for(relation) || {}
+      via_rules.each do |via_rel, via_type|
+        intermediate_ids = objects_with(subject, via_rel, object_type: via_type).distinct.pluck(:object_id)
+        next if intermediate_ids.empty?
+
+        relations_to_check = policy_class.effective_relations(relation)
+        ids.concat(
+          relationship_model
+            .where(subject_type: via_type.name, subject_id: intermediate_ids, object_type: object_type.name)
+            .with_any_relation(relations_to_check)
+            .distinct
+            .pluck(:object_id)
+        )
+      end
+
+      ids.uniq
     end
   end
 end

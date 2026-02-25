@@ -295,6 +295,17 @@ RSpec.describe Vauban::RelationshipStore do
       ids = Vauban.object_ids_for_relation(alice, :viewer, RsDocument)
       expect(ids).to contain_exactly(doc.id)
     end
+
+    it "returns cached ids when cache store is enabled (relation-scope cache)" do
+      cached_ids = [ 99, 100 ]
+      store = double("CacheStore")
+      allow(store).to receive(:fetch) do |key, _opts, &block|
+        key.to_s.include?("relation_scope") ? cached_ids : (block ? block.call : nil)
+      end
+      Vauban.configure { |c| c.cache_store = store }
+      ids = Vauban.object_ids_for_relation(alice, :viewer, RsDocument)
+      expect(ids).to eq(cached_ids)
+    end
   end
 
   describe ".objects_with" do

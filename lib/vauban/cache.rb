@@ -49,6 +49,18 @@ module Vauban
       "vauban:policy:#{resource_class.respond_to?(:name) ? resource_class.name : resource_class}"
     end
 
+    # Builds a cache key for relation-scope (object_ids_for_relation).
+    # Used to cache accessible_by scope when using relation-based policies.
+    #
+    # @param subject [Object] user or subject (must respond to :id or :to_key)
+    # @param relation [Symbol, String]
+    # @param object_type [Class]
+    # @return [String] cache key
+    def key_for_relation_scope(subject, relation, object_type)
+      type_name = object_type.respond_to?(:name) ? object_type.name : object_type.to_s
+      "vauban:relation_scope:#{user_key(subject)}:#{relation}:#{type_name}"
+    end
+
     # Returns a stable string key for the given user.
     #
     # @param user [Object, nil]
@@ -108,15 +120,39 @@ module Vauban
     def clear_for_resource(resource)
       return unless cache_enabled?
       clear_by_pattern("vauban:*:*:#{resource_key(resource)}:*", label: "clear_for_resource")
+      return unless resource.respond_to?(:class) && !resource.is_a?(Class)
+      clear_relation_scope_for_object_type(resource.class)
     end
 
     # Clears cache entries related to a specific user.
+    # Also clears relation-scope caches for that user (accessible_by).
     #
     # @param user [Object]
     # @return [void]
     def clear_for_user(user)
       return unless cache_enabled?
       clear_by_pattern("vauban:*:#{user_key(user)}:*", label: "clear_for_user")
+      clear_relation_scope_for_user(user)
+    end
+
+    # Clears only relation-scope caches for a user (e.g. after grant!/revoke!).
+    #
+    # @param user [Object]
+    # @return [void]
+    def clear_relation_scope_for_user(user)
+      return unless cache_enabled?
+      clear_by_pattern("vauban:relation_scope:#{user_key(user)}:*", label: "clear_relation_scope_for_user")
+    end
+
+    # Clears relation-scope caches for an object type (e.g. after revoke_all! on a resource).
+    # Invalidates all users' cached scopes for that type.
+    #
+    # @param object_type [Class]
+    # @return [void]
+    def clear_relation_scope_for_object_type(object_type)
+      return unless cache_enabled?
+      type_name = object_type.respond_to?(:name) ? object_type.name : object_type.to_s
+      clear_by_pattern("vauban:relation_scope:*:*:#{type_name}", label: "clear_relation_scope_for_object_type")
     end
 
     # Clears the in-process key memoization cache.

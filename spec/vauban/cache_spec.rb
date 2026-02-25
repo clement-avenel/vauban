@@ -108,6 +108,26 @@ RSpec.describe Vauban::Cache do
     end
   end
 
+  describe ".key_for_relation_scope" do
+    it "generates key from subject, relation, and object type" do
+      key = described_class.key_for_relation_scope(user, :viewer, Document)
+      expect(key).to eq("vauban:relation_scope:user:1:viewer:Document")
+    end
+
+    it "varies by relation" do
+      key1 = described_class.key_for_relation_scope(user, :viewer, Document)
+      key2 = described_class.key_for_relation_scope(user, :editor, Document)
+      expect(key1).not_to eq(key2)
+    end
+
+    it "varies by object type" do
+      stub_const("Project", Class.new)
+      key1 = described_class.key_for_relation_scope(user, :viewer, Document)
+      key2 = described_class.key_for_relation_scope(user, :viewer, Project)
+      expect(key1).not_to eq(key2)
+    end
+  end
+
   describe ".user_key" do
     it "returns 'user:nil' for nil" do
       expect(described_class.user_key(nil)).to eq("user:nil")
@@ -230,11 +250,30 @@ RSpec.describe Vauban::Cache do
   end
 
   describe ".clear_for_user" do
-    it "clears matching pattern" do
+    it "clears permission and relation-scope patterns for user" do
       allow(cache_store).to receive(:respond_to?).with(:delete_matched).and_return(true)
       allow(cache_store).to receive(:delete_matched)
       described_class.clear_for_user(user)
-      expect(cache_store).to have_received(:delete_matched).with(match(/user:1/))
+      expect(cache_store).to have_received(:delete_matched).with("vauban:*:user:1:*")
+      expect(cache_store).to have_received(:delete_matched).with("vauban:relation_scope:user:1:*")
+    end
+  end
+
+  describe ".clear_relation_scope_for_user" do
+    it "clears only relation-scope entries for that user" do
+      allow(cache_store).to receive(:respond_to?).with(:delete_matched).and_return(true)
+      allow(cache_store).to receive(:delete_matched)
+      described_class.clear_relation_scope_for_user(user)
+      expect(cache_store).to have_received(:delete_matched).with("vauban:relation_scope:user:1:*")
+    end
+  end
+
+  describe ".clear_relation_scope_for_object_type" do
+    it "clears relation-scope entries for that object type" do
+      allow(cache_store).to receive(:respond_to?).with(:delete_matched).and_return(true)
+      allow(cache_store).to receive(:delete_matched)
+      described_class.clear_relation_scope_for_object_type(Document)
+      expect(cache_store).to have_received(:delete_matched).with("vauban:relation_scope:*:*:Document")
     end
   end
 end
