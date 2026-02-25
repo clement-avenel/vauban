@@ -61,4 +61,3 @@ module Vauban
     end
   end
 end
-
