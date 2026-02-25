@@ -4,96 +4,97 @@
 DocumentCollaboration.destroy_all
 Document.destroy_all
 User.destroy_all
+Team.destroy_all
 
-# Create users
-alice = User.create!(
-  email: "alice@example.com",
-  name: "Alice"
-)
+require "vauban/relationship"
+Vauban::Relationship.delete_all
 
-bob = User.create!(
-  email: "bob@example.com",
-  name: "Bob"
-)
+# --- Users ---
+alice = User.create!(email: "alice@example.com", name: "Alice")
+bob   = User.create!(email: "bob@example.com", name: "Bob")
+charlie = User.create!(email: "charlie@example.com", name: "Charlie")
 
-charlie = User.create!(
-  email: "charlie@example.com",
-  name: "Charlie"
-)
+# --- Teams (membership lives only in the relationship store — no join table) ---
+team_alpha = Team.create!(name: "Alpha")
+team_beta  = Team.create!(name: "Beta")
 
-# Create documents owned by Alice
+Vauban.grant!(alice, :member, team_alpha)
+Vauban.grant!(bob, :member, team_alpha)
+Vauban.grant!(bob, :member, team_beta)
+Vauban.grant!(charlie, :member, team_beta)
+
+# --- Documents ---
 alice_doc_public = Document.create!(
   title: "Alice's Public Document",
-  content: "This is a public document owned by Alice. Anyone can view it!",
+  content: "Public. Anyone can view.",
   owner: alice,
   public: true
 )
 
 alice_doc_private = Document.create!(
   title: "Alice's Private Document",
-  content: "This is a private document owned by Alice. Only Alice and collaborators can view it.",
+  content: "Private. Only Alice (and direct grants).",
   owner: alice,
   public: false
 )
 
-alice_doc_archived = Document.create!(
-  title: "Alice's Archived Document",
-  content: "This document is archived and cannot be deleted.",
-  owner: alice,
-  public: false,
-  archived: true
-)
-
-# Create documents owned by Bob
 bob_doc_public = Document.create!(
   title: "Bob's Public Document",
-  content: "This is a public document owned by Bob. Anyone can view it!",
+  content: "Public.",
   owner: bob,
   public: true
 )
 
 bob_doc_private = Document.create!(
   title: "Bob's Private Document",
-  content: "This is a private document owned by Bob. Only Bob can view it.",
+  content: "Private. Bob only — plus Charlie has a direct :viewer grant (share link).",
   owner: bob,
   public: false
 )
 
-# Create a document with collaboration
-collaboration_doc = Document.create!(
-  title: "Collaboration Example",
-  content: "This document demonstrates collaboration. Alice owns it, but Bob is a collaborator with edit permissions.",
+# Document shared with Team Alpha: only Alpha members (Alice, Bob) can view — no AR collaboration
+team_alpha_doc = Document.create!(
+  title: "Shared with Team Alpha (ReBAC)",
+  content: "This document is not owned by you and has no collaborator row. You can view it because your team (Alpha) has :viewer. user --member--> team --viewer--> document.",
   owner: alice,
   public: false
 )
+Vauban.grant!(team_alpha, :viewer, team_alpha_doc)
 
-# Add Bob as a collaborator with edit permissions
-bob_collaboration = DocumentCollaboration.create!(
-  document: collaboration_doc,
-  user: bob
+# Document owned by Bob, shared with Team Beta: only Bob (owner) and Beta members (Bob, Charlie) can edit; Alice cannot
+team_beta_doc = Document.create!(
+  title: "Team Beta can edit (ReBAC)",
+  content: "Bob owns it. Team Beta has :editor, so Bob and Charlie can edit via the team. Alice is not in Beta and not the owner, so she cannot edit.",
+  owner: bob,
+  public: false
 )
-bob_collaboration.document_collaboration_permissions.create!(permission: "edit")
+Vauban.grant!(team_beta, :editor, team_beta_doc)
 
-# Add Charlie as a collaborator with view-only permissions
-charlie_collaboration = DocumentCollaboration.create!(
-  document: collaboration_doc,
-  user: charlie
+# Collaboration: Alice owns, Bob and Charlie are collaborators (AR); grants_relation syncs editor/viewer into the store
+collaboration_doc = Document.create!(
+  title: "Collaboration Example",
+  content: "Alice owns it; Bob (edit) and Charlie (view) are collaborators. Synced into the relationship store via grants_relation.",
+  owner: alice,
+  public: false
 )
-charlie_collaboration.document_collaboration_permissions.create!(permission: "view")
+bob_collab = DocumentCollaboration.create!(document: collaboration_doc, user: bob)
+bob_collab.document_collaboration_permissions.create!(permission: "edit")
+bob_collab.save!
+charlie_collab = DocumentCollaboration.create!(document: collaboration_doc, user: charlie)
+charlie_collab.document_collaboration_permissions.create!(permission: "view")
+charlie_collab.save!
 
-puts "✅ Seed data created!"
+# Direct grant (e.g. share link): Charlie can view Bob's private doc
+Vauban.grant!(charlie, :viewer, bob_doc_private)
+
+puts "✅ Seed data created (ReBAC demo)"
 puts ""
-puts "Users:"
-puts "  - Alice (#{alice.email})"
-puts "  - Bob (#{bob.email})"
-puts "  - Charlie (#{charlie.email})"
+puts "Users: Alice, Bob, Charlie"
+puts "Teams: Alpha (Alice, Bob), Beta (Bob, Charlie) — membership only in vauban_relationships"
 puts ""
-puts "Documents:"
-puts "  - Alice's Public Document (public, owned by Alice)"
-puts "  - Alice's Private Document (private, owned by Alice)"
-puts "  - Alice's Archived Document (archived, owned by Alice)"
-puts "  - Bob's Public Document (public, owned by Bob)"
-puts "  - Bob's Private Document (private, owned by Bob)"
-puts "  - Collaboration Example (private, owned by Alice, Bob can edit, Charlie can view)"
-puts ""
-puts "💡 Try switching users in the UI to see how permissions change!"
+puts "Relationship store is the only source for who can view/edit:"
+puts "  • Owner/collaborator synced from AR into the store (grants_relation)"
+puts "  • Team Alpha has :viewer on «Shared with Team Alpha» → Alice & Bob can view (2-hop)"
+puts "  • Team Beta has :editor on «Team Beta can edit» → Bob (owner) & Charlie (via Beta) can edit; Alice cannot"
+puts "  • Charlie has direct :viewer on Bob's Private Document (share link)"
+puts "💡 Log in as different users and see which documents appear and what you can do."

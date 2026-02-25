@@ -9,10 +9,13 @@ require "vauban/configuration"
 require "vauban/cache"
 require "vauban/errors"
 require "vauban/authorization"
+require "vauban/relationship_store"
+require "vauban/grants"
 
 require "vauban/railtie" if defined?(Rails)
 
 module Vauban
   extend ConfigurationMethods
   extend Authorization
+  extend RelationshipStore
 end

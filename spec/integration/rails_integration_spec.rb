@@ -65,34 +65,21 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     end
 
     it "allows collaborator with edit permission to edit" do
-      collaboration = DocumentCollaboration.create!(
-        document: document,
-        user: other_user,
-        permissions: [ :edit ]
-      )
-      # Reload document and preload associations to ensure fresh data
-      reloaded_doc = Document.includes(:collaborators, :document_collaborations).find(document.id)
-      reloaded_doc.association(:collaborators).load_target
-      reloaded_doc.association(:document_collaborations).load_target
+      collaboration = DocumentCollaboration.create!(document: document, user: other_user)
+      collaboration.document_collaboration_permissions.create!(permission: "edit")
+      collaboration.save!
 
-      # Verify collaborator can view (this tests the collaborator association)
-      expect(Vauban.can?(other_user, :view, reloaded_doc)).to be true
-
-      # Note: Edit permission check requires collaboration_permissions to return symbols
-      # or policy to check for both symbols and strings. JSON serialization converts
-      # symbols to strings, so the policy check may fail. This tests the collaborator
-      # association path which is the main integration point.
+      expect(Vauban.can?(other_user, :view, document)).to be true
+      expect(Vauban.can?(other_user, :edit, document)).to be true
     end
 
     it "denies collaborator without edit permission from editing" do
-      collaboration = DocumentCollaboration.create!(
-        document: document,
-        user: other_user,
-        permissions: [ "view" ] # Use string array to match JSON serialization
-      )
-      reloaded_doc = Document.includes(:collaborators, :document_collaborations).find(document.id)
-      reloaded_doc.association(:collaborators).load_target
-      expect(Vauban.can?(other_user, :edit, reloaded_doc)).to be false
+      collaboration = DocumentCollaboration.create!(document: document, user: other_user)
+      collaboration.document_collaboration_permissions.create!(permission: "view")
+      collaboration.save!
+
+      expect(Vauban.can?(other_user, :view, document)).to be true
+      expect(Vauban.can?(other_user, :edit, document)).to be false
     end
 
     it "passes context to permission checks" do
@@ -121,6 +108,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
 
   describe "Scopes" do
     it "returns scoped documents user can view" do
+      document # create first so owner grant is in the relationship store
       public_doc = Document.create!(title: "Public", owner: other_user, public: true)
       private_doc = Document.create!(title: "Private", owner: other_user, public: false)
 
@@ -131,11 +119,9 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     end
 
     it "includes documents where user is collaborator" do
-      collaboration = DocumentCollaboration.create!(
-        document: document,
-        user: other_user,
-        permissions: [ :view ]
-      )
+      collaboration = DocumentCollaboration.create!(document: document, user: other_user)
+      collaboration.document_collaboration_permissions.create!(permission: "view")
+      collaboration.save!
 
       scoped = Vauban.accessible_by(other_user, :view, Document)
       expect(scoped).to include(document)
@@ -185,6 +171,7 @@ RSpec.describe "Vauban Rails Integration", type: :request do
     end
 
     it "uses scoped documents for accessible_by" do
+      document # create first so owner grant is in the relationship store
       public_doc = Document.create!(title: "Public", owner: other_user, public: true)
       scoped = Vauban.accessible_by(user, :view, Document)
       expect(scoped).to include(document)

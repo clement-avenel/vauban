@@ -30,6 +30,7 @@ module Vauban
     generators do
       require "generators/vauban/install_generator"
       require "generators/vauban/policy_generator"
+      require "generators/vauban/relationships_generator"
     end
   end
 end

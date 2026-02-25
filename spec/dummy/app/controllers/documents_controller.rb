@@ -44,7 +44,7 @@ class DocumentsController < ApplicationController
   # PATCH/PUT /documents/:id
   def update
     authorize! :edit, @document
-    
+
     if @document.update(document_params)
       redirect_to @document, notice: "Document was successfully updated."
     else

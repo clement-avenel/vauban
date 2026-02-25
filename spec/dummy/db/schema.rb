@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_02_19_000001) do
+ActiveRecord::Schema[8.1].define(version: 2025_02_25_000001) do
   create_table "document_collaboration_permissions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "document_collaboration_id", null: false
@@ -42,12 +42,32 @@ ActiveRecord::Schema[8.1].define(version: 2025_02_19_000001) do
     t.index ["owner_id"], name: "index_documents_on_owner_id"
   end
 
+  create_table "teams", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "users", force: :cascade do |t|
     t.boolean "admin", default: false
     t.datetime "created_at", null: false
     t.string "email"
     t.string "name"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "vauban_relationships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "object_id", null: false
+    t.string "object_type", null: false
+    t.string "relation", null: false
+    t.bigint "subject_id", null: false
+    t.string "subject_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["object_type", "object_id", "relation"], name: "idx_vauban_rel_object_relation"
+    t.index ["relation"], name: "idx_vauban_rel_relation"
+    t.index ["subject_type", "subject_id", "relation", "object_type", "object_id"], name: "idx_vauban_rel_unique_tuple", unique: true
+    t.index ["subject_type", "subject_id"], name: "idx_vauban_rel_subject"
   end
 
   add_foreign_key "document_collaboration_permissions", "document_collaborations"
